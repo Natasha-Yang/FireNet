@@ -1,8 +1,4 @@
-data/
-
-data/NextDayWildfireSpread
-data/WildfireSpreadTS
-
+*.tfrecord
 *.jpg
 *.png
 *.mp4
