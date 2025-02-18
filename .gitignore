@@ -1,0 +1,10 @@
+data/
+
+data/NextDayWildfireSpread
+data/WildfireSpreadTS
+
+*.jpg
+*.png
+*.mp4
+*.csv
+

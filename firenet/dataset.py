@@ -24,6 +24,13 @@ def main(
     logger.success("Processing dataset complete.")
     # -----------------------------------------
 
+import kagglehub
+
 
 if __name__ == "__main__":
-    app()
+    #app()
+    # Download latest version
+    path = kagglehub.dataset_download("fantineh/next-day-wildfire-spread")
+
+    print("Path to dataset files:", path)
+
