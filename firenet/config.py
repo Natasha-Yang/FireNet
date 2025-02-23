@@ -10,11 +10,11 @@ load_dotenv()
 PROJ_ROOT = Path(__file__).resolve().parents[1]
 logger.info(f"PROJ_ROOT path is: {PROJ_ROOT}")
 
-DATA_DIR = PROJ_ROOT / "data"
-NDWS_RAW_DATA_DIR = DATA_DIR / "NextDayWildfireSpread" / "raw"
-NDWS_INTERIM_DATA_DIR = DATA_DIR / "NextDayWildfireSpread" / "interim"
-NDWS_PROCESSED_DATA_DIR = DATA_DIR / "NextDayWildfireSpread" / "processed"
-NDWS_EXTERNAL_DATA_DIR = DATA_DIR / "NextDayWildfireSpread" /"external"
+NDWS_DATA_DIR = PROJ_ROOT / "data" / "NextDayWildfireSpread"
+NDWS_RAW_DATA_DIR = NDWS_DATA_DIR / "raw"
+NDWS_INTERIM_DATA_DIR = NDWS_DATA_DIR / "interim"
+NDWS_PROCESSED_DATA_DIR = NDWS_DATA_DIR / "processed"
+NDWS_EXTERNAL_DATA_DIR = NDWS_DATA_DIR / "external"
 
 MODELS_DIR = PROJ_ROOT / "models"
 
