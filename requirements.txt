@@ -1,6 +1,7 @@
 black
 flake8
 ipython
+ipykernel
 isort
 jupyterlab
 loguru
@@ -12,6 +13,8 @@ pandas
 pip
 python-dotenv
 scikit-learn
+tensorflow
+tfrecord
 tqdm
 typer
 transformers
