@@ -161,27 +161,40 @@ if __name__ == "__main__":
         test_datasets.append(test_data)
     
 
+
+    # load the mean and standard deviation of data
+    with open("channel_stats.json", "r") as f:
+            stats = json.load(f)
+
     # prepare dataloaders
-    train_loader = DataLoader(NDWS_Dataset(train_datasets, INPUT_FEATURES, OUTPUT_FEATURES),
+    normalize_train = transforms.Normalize(stats["mean_train"], stats["std_train"])
+    train_loader = DataLoader(NDWS_Dataset(train_datasets, INPUT_FEATURES, OUTPUT_FEATURES,
+                                           normalize_train),
                               batch_size = 1,
                               shuffle=False,
                               collate_fn = collate_fn)
-    val_loader = DataLoader(NDWS_Dataset(val_datasets, INPUT_FEATURES, OUTPUT_FEATURES),
+    
+    normalize_val = transforms.Normalize(stats["mean_val"], stats["std_val"])
+    val_loader = DataLoader(NDWS_Dataset(val_datasets, INPUT_FEATURES, OUTPUT_FEATURES,
+                                         normalize_val),
                             batch_size = 1,
                             shuffle=False,
                             collate_fn = collate_fn)
-    test_loader = DataLoader(NDWS_Dataset(test_datasets, INPUT_FEATURES, OUTPUT_FEATURES),
+    
+    normalize_test = transforms.Normalize(stats["mean_test"], stats["std_test"])
+    test_loader = DataLoader(NDWS_Dataset(test_datasets, INPUT_FEATURES, OUTPUT_FEATURES,
+                                          normalize_test),
                              batch_size = 1,
                              shuffle=False,
                              collate_fn = collate_fn)
+    
+    # from util import check_batch_shape
+    # check_batch_shape(test_loader)
 
+
+    
         
-
-    '''
-        # import stats from channel_stats.json
-        with open("channel_stats.json", "r") as f:
-            stats = json.load(f)'''
-
+        
 
 
 
