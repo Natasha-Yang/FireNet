@@ -14,4 +14,8 @@ python-dotenv
 scikit-learn
 tqdm
 typer
+transformers
+torch
+torchvision
+datasets
 -e .
