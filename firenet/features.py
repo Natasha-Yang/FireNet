@@ -31,6 +31,7 @@ def main(
                                      kernel_size = model.embeddings.patch_embeddings.projection.patch_size,
                                      stride = model.embeddings.patch_embeddings.projection.stride)
     model.embeddings.patch_embeddings.projection = new_conv_layer
+    
 
 
     for i in tqdm(range(10), total=10):
