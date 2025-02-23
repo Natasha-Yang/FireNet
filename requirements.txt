@@ -12,6 +12,7 @@ pandas
 pip
 python-dotenv
 scikit-learn
+tensorflow
 tqdm
 typer
 transformers
