@@ -3,4 +3,5 @@
 *.png
 *.mp4
 *.csv
+.venv
 
