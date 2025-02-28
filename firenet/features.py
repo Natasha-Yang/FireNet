@@ -4,10 +4,11 @@ import typer
 from loguru import logger
 from tqdm import tqdm
 
-from transformers import AutoImageProcessor, ViTModel
+from transformers import ViTModel
 import torch
 
 from firenet.config import PROCESSED_DATA_DIR
+from dataset import train_loader
 
 app = typer.Typer()
 
