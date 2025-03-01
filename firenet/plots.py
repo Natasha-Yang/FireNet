@@ -56,6 +56,29 @@ def plot_mean_and_std(INPUT_FEATURES, stats, figure_name):
     plt.savefig(figure_name)
     plt.show()
 
+
+
+def plot_fire_masks(dataloader):
+    colors = {1: [1, 0, 0],  # red for active fire
+              0: [0.5, 0.5, 0.5],  # grey for no fire
+              -1: [0, 0, 0]} # black for uncertain
+    
+    for _, fire_masks in tqdm(dataloader, desc = "Plotting fire masks"):
+        # batch_size * T * num_channels * H * W
+        fire_mask = fire_masks[0, 300, :, :] # plot the 300th fire mask
+        assert fire_mask.shape[0] * fire_mask.shape[1] == 64 * 64
+        
+        rgb_image = np.zeros((fire_mask.shape[0], fire_mask.shape[1], 3))
+        for value, color in colors.items():
+            rgb_image[fire_mask == value] = color
+
+        plt.figure(figsize=(6, 6))
+        plt.imshow(rgb_image)
+        plt.axis("off")
+        plt.title("Fire Mask Visualization (T=300)")
+        plt.show()
+
+
 @app.command()
 def main(
     # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----

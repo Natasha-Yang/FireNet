@@ -1,9 +1,12 @@
 import torch
-from dataset import get_dataset, get_dataloader
+from dataset import *
 
 import torchvision.transforms as transforms
+import numpy as np
+import matplotlib.pyplot as plt
+from constants import *
 
-from firenet.config import NDWS_RAW_DATA_DIR
+from firenet.config import *
 import os
 import glob
 import json
@@ -12,7 +15,7 @@ from tqdm import tqdm
 
 def compute_stats(dataloader, num_channels):
     '''
-    Computes the mean and standard deviation of the dataset for each channel
+    Computes the mean and standard deviation for each channel of a dataset
 
     Args:
     dataloader: dataloader for a TFRecord dataset; assumes input data has shape
@@ -35,50 +38,54 @@ def compute_stats(dataloader, num_channels):
     mean = sum_channels / num_pixels
     std = torch.sqrt((sum_sq_channels / num_pixels) - (mean ** 2))
 
-    
     return mean.tolist(), std.tolist()
 
 
+def compute_class_proportions(dataloader):
+    '''
+    Computes the proportions of class labels in a dataset
 
-if __name__ == '__main__':
-
-    INPUT_FEATURES = ['elevation', 'th', 'vs',  'tmmn', 'tmmx', 'sph', 
-                    'pr', 'pdsi', 'NDVI', 'population', 'erc', 'PrevFireMask']
-
-
-    OUTPUT_FEATURES = ['FireMask']
-
-    num_features = len(INPUT_FEATURES)
-
-    description = {feature_name: "float" for feature_name in INPUT_FEATURES + OUTPUT_FEATURES}
-
-    # load the mean and standard deviation of data
-    with open("channel_stats_raw.json", "r") as f:
-        stats = json.load(f)
-
-    # extract train, val, test files
-    train_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*train_*.tfrecord"))
-    val_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*eval_*.tfrecord"))
-    test_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*test_*.tfrecord"))
-
-    transform = True
-    if transform == True:
-        train_transform = transforms.Normalize(stats["mean_train"], stats["std_train"])
-        val_transform = transforms.Normalize(stats["mean_val"], stats["std_val"])
-        test_transform = transforms.Normalize(stats["mean_test"], stats["std_test"])
-    else:
-        train_transform, val_transform, test_transform = None, None, None
+    Args:
+    dataloader: dataloader for a TFRecord dataset; assumes input data has shape
+    (batch_size, num_channels, H, W)
+    num_channels: number of input channels
+    '''
     
-    # create datasets
-    train_dataset = get_dataset(train_file_paths, INPUT_FEATURES, OUTPUT_FEATURES, description, train_transform)
-    val_dataset = get_dataset(val_file_paths, INPUT_FEATURES, OUTPUT_FEATURES, description, val_transform)
-    test_dataset = get_dataset(test_file_paths, INPUT_FEATURES, OUTPUT_FEATURES, description, test_transform)
+    n_active, n_inactive, n_uncertain = 0, 0, 0
+
+    for _, fire_masks in tqdm(dataloader, desc = "Computing Percentage of Pixels with Active Fires"):
+        # batch_size * T * num_channels * H * W
+        mask_size = fire_masks.shape[2] * fire_masks.shape[3]
+        assert mask_size == 64 * 64
+        n_active += torch.sum(fire_masks == 1).item()
+        n_inactive += torch.sum(fire_masks == 0).item()
+        n_uncertain += torch.sum(fire_masks == -1).item()
+    
+    total = n_active + n_inactive + n_uncertain
+
+    return n_active / total, n_inactive / total, n_uncertain / total
+
+
+def compute_stats_all_splits(transformed = False):
+    '''
+    Computes and saves the mean and standard deviation of all three splits
+    '''
+    
+    if transformed: # get transformed datasets
+        train_dataset, val_dataset, test_dataset = make_interim_datasets()
+        save_filename = "reports/channel_stats_transformed.json"
+    else: # get raw datasets
+        train_dataset, val_dataset, test_dataset = make_raw_datasets()
+        save_filename = "reports/channel_stats_raw.json"
     
     # prepare dataloaders
-    train_loader = get_dataloader(train_dataset, batch_size = 1, shuffle = False)
-    val_loader = get_dataloader(val_dataset, batch_size = 1, shuffle = False)
-    test_loader = get_dataloader(test_dataset, batch_size = 1, shuffle = False)
-
+    train_loader, val_loader, test_loader = get_dataloaders_all_splits(train_dataset,
+                                                                       val_dataset,
+                                                                       test_dataset,
+                                                                       batch_sz = 1,
+                                                                       shuffle = False)
+    
+    # compute mean and standard deviation
     mean_train, std_train = compute_stats(train_loader, num_features)
     mean_val, std_val = compute_stats(val_loader, num_features)
     mean_test, std_test = compute_stats(test_loader, num_features)
@@ -87,10 +94,45 @@ if __name__ == '__main__':
             "mean_val": mean_val, "std_val": std_val,
             "mean_test": mean_test, "std_test": std_test}
 
-    with open("channel_stats_transformed.json", "w") as f:
+    # save statistics
+    with open(save_filename, "w") as f:
         json.dump(stats, f, indent=4) 
 
 
 
+def compute_class_proportions_all_splits():
+    '''
+    Computes the class proportions of all three splits
+    '''
+    train_dataset, val_dataset, test_dataset = make_raw_datasets()
+    train_loader, val_loader, test_loader = get_dataloaders_all_splits(train_dataset,
+                                                                       val_dataset,
+                                                                       test_dataset,
+                                                                       batch_sz = 1,
+                                                                       shuffle = False)
+    
+    print("Train:")
+    print(compute_class_proportions(train_loader))
+    print("Validation:")
+    print(compute_class_proportions(val_loader))
+    print("Test:")
+    print(compute_class_proportions(test_loader))
 
 
+
+
+
+
+
+
+if __name__ == '__main__':
+    # computes and saves the mean and standard deviation of each channel after normalization
+    # compute_stats_all_splits(transformed = True)
+    compute_class_proportions_all_splits()
+    
+    
+
+    
+    
+        
+    

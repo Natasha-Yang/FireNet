@@ -11,8 +11,9 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader, ChainDataset
 import numpy as np
 from torch.nn.utils.rnn import pad_sequence
+from constants import *
 
-from firenet.config import NDWS_DATA_DIR, NDWS_RAW_DATA_DIR, NDWS_PROCESSED_DATA_DIR
+from firenet.config import *
 import os
 import glob
 import json
@@ -22,6 +23,10 @@ app = typer.Typer()
 
 
 @app.command()
+
+# ==================
+# Dataset Class
+# ==================
 
 class NDWS_Dataset(Dataset):
     '''
@@ -59,6 +64,9 @@ class NDWS_Dataset(Dataset):
 
         return inputs, labels
 
+# ==================
+# Data Loaders
+# ==================
 
 def get_dataset(file_paths, input_features, output_features, description, transform = None):
     '''
@@ -77,8 +85,6 @@ def get_dataset(file_paths, input_features, output_features, description, transf
         combined_ds.append(ds)
     
     return NDWS_Dataset(combined_ds, input_features, output_features, transform)
-    
-    
 
 
 def get_dataloader(dataset, batch_size, shuffle):
@@ -86,6 +92,16 @@ def get_dataloader(dataset, batch_size, shuffle):
     return DataLoader(dataset, batch_size = batch_size, shuffle = shuffle, collate_fn = collate_fn)
 
 
+def get_dataloaders_all_splits(train_ds, val_ds, test_ds, batch_sz, shuffle = True):
+    train_loader = get_dataloader(train_ds, batch_size = batch_sz, shuffle = shuffle)
+    val_loader = get_dataloader(val_ds, batch_size = batch_sz, shuffle = False)
+    test_loader = get_dataloader(test_ds, batch_size = batch_sz, shuffle = False)
+    return train_loader, val_loader, test_loader
+
+
+# ============================
+# Preprocessing & Data Loading
+# ============================
 def collate_fn(batch):
     '''
     Pads sequences so that they are the same length
@@ -99,6 +115,82 @@ def collate_fn(batch):
 
     return padded_inputs, padded_labels
 
+
+def make_raw_datasets():
+    '''
+    Returns raw train, validation and test datasets
+    '''
+    # extract train, val, test files
+    train_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*train_*.tfrecord"))
+    val_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*eval_*.tfrecord"))
+    test_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*test_*.tfrecord"))
+
+    # create datasets
+    train_dataset = get_dataset(train_file_paths, INPUT_FEATURES, OUTPUT_FEATURES,
+                                description)
+    val_dataset = get_dataset(val_file_paths, INPUT_FEATURES, OUTPUT_FEATURES,
+                            description)
+    test_dataset = get_dataset(test_file_paths, INPUT_FEATURES, OUTPUT_FEATURES,
+                            description)
+    
+    return train_dataset, val_dataset, test_dataset
+
+
+
+def make_interim_datasets():
+    '''
+    Creates, saves and returns processed interim datasets
+    '''
+
+    save_paths = {
+            "train": NDWS_INTERIM_DATA_DIR / "train_normalized.pt",
+            "val": NDWS_INTERIM_DATA_DIR / "val_normalized.pt",
+            "test": NDWS_INTERIM_DATA_DIR / "test_normalized.pt",
+    }
+
+    
+    if all(path.exists() for path in save_paths.values()):
+        print("Loading interim datasets...")
+        return (
+            torch.load(save_paths["train"]),
+            torch.load(save_paths["val"]),
+            torch.load(save_paths["test"]),
+        )
+
+    print("Creating interim datasets...")
+    # load the mean and standard deviation of raw data
+    with open("reports/channel_stats_raw.json", "r") as f:
+        stats = json.load(f)
+
+    # extract train, val, test files
+    train_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*train_*.tfrecord"))
+    val_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*eval_*.tfrecord"))
+    test_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*test_*.tfrecord"))
+
+    # create datasets
+    train_transform = transforms.Normalize(stats["mean_train"], stats["std_train"])
+    train_dataset = get_dataset(train_file_paths, INPUT_FEATURES, OUTPUT_FEATURES,
+                                description, train_transform)
+
+    val_transform = transforms.Normalize(stats["mean_val"], stats["std_val"])
+    val_dataset = get_dataset(val_file_paths, INPUT_FEATURES, OUTPUT_FEATURES,
+                            description, val_transform)
+
+    test_transform = transforms.Normalize(stats["mean_test"], stats["std_test"])
+    test_dataset = get_dataset(test_file_paths, INPUT_FEATURES, OUTPUT_FEATURES,
+                            description, test_transform)
+
+    # save transformed data
+    train_save_path = os.path.join(NDWS_INTERIM_DATA_DIR, 'train_normalized.pt')
+    val_save_path = os.path.join(NDWS_INTERIM_DATA_DIR, 'val_normalized.pt')
+    test_save_path = os.path.join(NDWS_INTERIM_DATA_DIR, 'test_normalized.pt')
+
+    torch.save([train_dataset[i] for i in range(len(train_dataset))], train_save_path)
+    torch.save([val_dataset[i] for i in range(len(val_dataset))], val_save_path)
+    torch.save([test_dataset[i] for i in range(len(test_dataset))], test_save_path)
+
+    print("Loading interim datasets...")
+    return train_dataset, val_dataset, test_dataset
 
 
 def main(
@@ -123,42 +215,7 @@ def main(
 
 if __name__ == "__main__":
     #app()
-
-    INPUT_FEATURES = ['elevation', 'th', 'vs',  'tmmn', 'tmmx', 'sph', 
-                  'pr', 'pdsi', 'NDVI', 'population', 'erc', 'PrevFireMask']
-
-    OUTPUT_FEATURES = ['FireMask']
-
-    num_features = len(INPUT_FEATURES)
-
-    description = {feature_name: "float" for feature_name in INPUT_FEATURES + OUTPUT_FEATURES}
-
-    # load the mean and standard deviation of data
-    with open("channel_stats.json", "r") as f:
-            stats = json.load(f)
-
-    # extract train, val, test files
-    train_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*train_*.tfrecord"))
-    val_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*eval_*.tfrecord"))
-    test_file_paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*test_*.tfrecord"))
-
-    # create datasets
-    train_transform = transforms.Normalize(stats["mean_train"], stats["std_train"])
-    train_dataset = get_dataset(train_file_paths, INPUT_FEATURES, OUTPUT_FEATURES, description, train_transform)
-
-    val_transform = transforms.Normalize(stats["mean_val"], stats["std_val"])
-    val_dataset = get_dataset(val_file_paths, INPUT_FEATURES, OUTPUT_FEATURES, description, val_transform)
-
-    test_transform = transforms.Normalize(stats["mean_test"], stats["std_test"])
-    test_dataset = get_dataset(test_file_paths, INPUT_FEATURES, OUTPUT_FEATURES, description, True)
-
-    # prepare dataloaders
-    train_loader = get_dataloader(train_dataset, batch_size = 1, shuffle = False)
-    val_loader = get_dataloader(val_dataset, batch_size = 1, shuffle = False)
-    test_loader = get_dataloader(test_dataset, batch_size = 1, shuffle = False)
-    
-    # from util import check_batch_shape
-    # check_batch_shape(test_loader)
+    train_dataset, val_dataset, test_dataset = make_interim_datasets()
 
 
     
