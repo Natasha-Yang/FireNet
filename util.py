@@ -16,8 +16,7 @@ def save_channel_stats(INPUT_FEATURES, mean_per_channel, std_per_channel):
 def check_batch_shape(dataloader):
     batch = next(iter(dataloader))
 
-    inputs, labels, sequence_lengths = batch  # (batch_size, T, num_channels, 64, 64)
+    inputs, labels = batch  # (batch_size, T, num_channels, 64, 64)
     
     print("Padded Input Shape:", inputs.shape)  # (batch_size, max_T, num_channels, 64, 64)
     print("Padded Label Shape:", labels.shape)  # (batch_size, max_T, 64, 64)
-    print("Sequence Lengths:", sequence_lengths)  # (batch_size)

@@ -9,7 +9,7 @@ import torch.nn as nn
 import matplotlib.pyplot as plt
 
 from firenet.config import *
-from dataset import *
+from dataset_NDWS import *
 from constants import *
 
 app = typer.Typer()

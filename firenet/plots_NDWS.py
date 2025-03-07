@@ -9,6 +9,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from firenet.config import FIGURES_DIR, NDWS_PROCESSED_DATA_DIR
+from firenet.dataset_NDWS import *
+from firenet.constants import *
 
 app = typer.Typer()
 
@@ -57,26 +59,50 @@ def plot_mean_and_std(INPUT_FEATURES, stats, figure_name):
     plt.show()
 
 
-
 def plot_fire_masks(dataloader):
-    colors = {1: [1, 0, 0],  # red for active fire
-              0: [0.5, 0.5, 0.5],  # grey for no fire
-              -1: [0, 0, 0]} # black for uncertain
-    
-    for _, fire_masks in tqdm(dataloader, desc = "Plotting fire masks"):
-        # batch_size * T * num_channels * H * W
-        fire_mask = fire_masks[0, 300, :, :] # plot the 300th fire mask
-        assert fire_mask.shape[0] * fire_mask.shape[1] == 64 * 64
-        
-        rgb_image = np.zeros((fire_mask.shape[0], fire_mask.shape[1], 3))
-        for value, color in colors.items():
-            rgb_image[fire_mask == value] = color
+    colors = {1: [1, 0, 0],  # Red for active fire
+              0: [0.5, 0.5, 0.5],  # Grey for no fire
+              -1: [0, 0, 0]}  # Black for uncertain
 
-        plt.figure(figsize=(6, 6))
-        plt.imshow(rgb_image)
-        plt.axis("off")
-        plt.title("Fire Mask Visualization (T=300)")
-        plt.show()
+    inputs, fire_masks = next(iter(dataloader))
+    # (B, T, C, H, W)
+    prev_fire_masks = inputs[0, :10, -1, :, :]  # Extract previous fire mask (T, H, W)
+
+    assert len(prev_fire_masks.shape) == 3, "Expected (T, H, W) shape for prev_fire_masks"
+    
+    fig, axes = plt.subplots(nrows=2, ncols=10, figsize=(25, 10))  # 2 rows, 10 columns
+    print(prev_fire_masks.shape)
+    print(fire_masks.shape)
+    for t in tqdm(range(10), desc="Plotting fire masks"):
+        # Extract the t-th fire mask and previous fire mask
+        fire_mask_t = fire_masks[0, t, :, :]
+        prev_fire_mask_t = prev_fire_masks[t, :, :]
+
+        assert fire_mask_t.shape == (64, 64), "Expected fire_mask_t to have shape (64, 64)"
+        assert prev_fire_mask_t.shape == (64, 64), "Expected prev_fire_mask_t to have shape (64, 64)"
+
+        # Convert to RGB images
+        rgb_fire_mask = np.zeros((64, 64, 3))
+        rgb_prev_fire_mask = np.zeros((64, 64, 3))
+        
+        for value, color in colors.items():
+            rgb_fire_mask[fire_mask_t == value] = color
+            rgb_prev_fire_mask[prev_fire_mask_t == value] = color
+
+        # Plot previous fire mask
+        axes[0, t].imshow(rgb_prev_fire_mask)
+        axes[0, t].set_title(f"Prev. Mask (t={t})")
+        axes[0, t].axis("off")
+
+        # Plot current fire mask
+        axes[1, t].imshow(rgb_fire_mask)
+        axes[1, t].set_title(f"Mask (t={t})")
+        axes[1, t].axis("off")
+
+    plt.tight_layout()
+    plt.show()
+    plt.savefig("fire")
+
 
 
 @app.command()
@@ -99,7 +125,11 @@ def main(
 
 
 if __name__ == "__main__":
-    app()
+    #app()
+    paths = glob.glob(os.path.join(NDWS_RAW_DATA_DIR, "*eval_*.tfrecord"))
+    dataset = get_dataset(paths, INPUT_FEATURES, OUTPUT_FEATURES, description)
+    loader = get_dataloader(dataset, 1, shuffle = False)
+    plot_fire_masks(loader)
     
 
     

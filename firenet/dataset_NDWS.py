@@ -4,14 +4,13 @@ import typer
 from loguru import logger
 from tqdm import tqdm
 
-from transformers import AutoImageProcessor
 from tfrecord.torch.dataset import TFRecordDataset
 import torch
 import torchvision.transforms as transforms
-from torch.utils.data import Dataset, DataLoader, ChainDataset
+from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from torch.nn.utils.rnn import pad_sequence
-from constants import *
+from firenet.constants import *
 
 from firenet.config import *
 import os
@@ -88,7 +87,6 @@ def get_dataset(file_paths, input_features, output_features, description, transf
 
 
 def get_dataloader(dataset, batch_size, shuffle):
-
     return DataLoader(dataset, batch_size = batch_size, shuffle = shuffle, collate_fn = collate_fn)
 
 

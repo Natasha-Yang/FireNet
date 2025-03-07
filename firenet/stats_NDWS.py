@@ -1,10 +1,10 @@
 import torch
-from dataset import *
+from dataset_NDWS import *
 
 import torchvision.transforms as transforms
 import numpy as np
 import matplotlib.pyplot as plt
-from constants import *
+from constants_NDWS import *
 
 from firenet.config import *
 import os
