@@ -10,7 +10,7 @@ import numpy as np
 
 from firenet.config import FIGURES_DIR, NDWS_PROCESSED_DATA_DIR
 from firenet.dataset_NDWS import *
-from firenet.constants import *
+from firenet.constants_NDWS import *
 
 app = typer.Typer()
 

@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 from firenet.config import *
 from dataset_NDWS import *
-from constants import *
+from constants_NDWS import *
 
 app = typer.Typer()
 
