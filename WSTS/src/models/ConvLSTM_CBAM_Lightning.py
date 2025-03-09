@@ -37,7 +37,7 @@ class ConvLSTM_CBAM_Seg_multi_layers(ConvLSTM_CBAM_Seg):
         self.pad_value = pad_value
 
 
-class ConvLSTM_CBAM(BaseModel):
+class ConvLSTM_CBAM_Lightning(BaseModel):
     def __init__(
         self,
         n_channels: int,
