@@ -1,26 +1,18 @@
-from pathlib import Path
-
-import typer
-from loguru import logger
-from tqdm import tqdm
-
+import pytorch_lightning as pl
 from pytorch_lightning.utilities import rank_zero_only
 import torch
-from firenet.dataloader_WSTS.FireSpreadDataModule import FireSpreadDataModule
+from dataloader.FireSpreadDataModule import FireSpreadDataModule
 from pytorch_lightning.cli import LightningCLI
-from firenet.models_WSTS import SMPModel, BaseModel, ConvLSTMLightning, LogisticRegression  # noqa
+from models import SMPModel, BaseModel, ConvLSTMLightning, LogisticRegression  # noqa
+from models import BaseModel
 import wandb
 import os
 
-from firenet.dataloader_WSTS.FireSpreadDataset import FireSpreadDataset
-from firenet.dataloader_WSTS.utils import get_means_stds_missing_values
-
-
-app = typer.Typer()
+from dataloader.FireSpreadDataset import FireSpreadDataset
+from dataloader.utils import get_means_stds_missing_values
 
 os.environ['HDF5_USE_FILE_LOCKING'] = 'FALSE'
 torch.set_float32_matmul_precision('high')
-
 
 
 class MyLightningCLI(LightningCLI):
@@ -39,7 +31,9 @@ class MyLightningCLI(LightningCLI):
                             default=False, help="If True: compute val metrics.")
         parser.add_argument("--ckpt_path", type=str, default=None,
                             help="Path to checkpoint to load for resuming training, for testing and predicting.")
-        
+        parser.add_argument("--model_name", type=str,
+                            help="Name of model wandb directory")
+
     def before_instantiate_classes(self):
         # The number of features is only known inside the data module, but we need that info to instantiate the model.
         # Since datamodule and model are instantiated at the same time with LightningCLI, we need to set the number of features here.
@@ -79,7 +73,7 @@ class MyLightningCLI(LightningCLI):
         last known values, which is not what we want.
         """
         if wandb.run is None:
-            wandb.init(project="wildfire_progression", name="unet")
+            wandb.init(project="wildfire_progression", name=self.config.model_name)
         config_file_name = os.path.join(wandb.run.dir, "cli_config.yaml")
 
         cfg_string = self.parser.dump(self.config, skip_none=False)

@@ -21,4 +21,8 @@ transformers
 torch
 torchvision
 datasets
+wandb
+pytorch-lightning
+segmentation-models-pytorch
+jsonargparse[signatures]==4.20.1
 -e .
