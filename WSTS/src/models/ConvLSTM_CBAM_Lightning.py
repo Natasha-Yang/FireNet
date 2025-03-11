@@ -7,7 +7,7 @@ from .utae_paps_models.cbam import ConvLSTM_CBAM, ConvLSTM_CBAM_Seg
 
 
 class ConvLSTM_CBAM_Seg_multi_layers(ConvLSTM_CBAM_Seg):
-    """_summary_ ConvLSTM class where the number of layers can be set. 
+    """_summary_ ConvLSTM CBAM class where the number of layers can be set. 
     """
     def __init__(
         self,

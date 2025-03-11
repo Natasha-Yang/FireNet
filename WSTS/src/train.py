@@ -1,3 +1,4 @@
+import pytorch_lightning as pl
 from pytorch_lightning.utilities import rank_zero_only
 import torch
 from dataloader.FireSpreadDataModule import FireSpreadDataModule
