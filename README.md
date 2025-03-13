@@ -43,8 +43,6 @@ python3 train.py --config=cfgs/convlstm_cbam/full_run.yaml \
 
 ---
 
-This version improves readability, formatting, and clarity. Let me know if you need any tweaks! 🚀
-
 ## Project Organization
 The most up-to-date code compatible with the **WildfireSpreadTS** dataset is currently located in **WSTS**. Since we recently transitioned datasets, we are in the process of migrating documents from **WSTS** to our main module, **FireNet**.  
 
