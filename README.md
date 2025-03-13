@@ -1,5 +1,3 @@
-Here's a cleaner and more structured version of your README with improved clarity and formatting:
-
 ---
 
 # FireNet  
