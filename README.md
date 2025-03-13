@@ -35,10 +35,6 @@ python3 train.py --config=cfgs/convlstm_cbam/full_run.yaml \
                  --model_name YOUR_MODEL_NAME
 ```  
 
-## Citations  
-- The **WSTS** module was forked from [SebastianGer/WildfireSpreadTS](https://github.com/SebastianGer/WildfireSpreadTS.git).  
-- All code related to the **CBAM architecture** is our own.  
-
 ---
 
 ## Project Organization
@@ -84,6 +80,13 @@ The most up-to-date code compatible with the **WildfireSpreadTS** dataset is cur
 │
 └── firenet            <- **Outdated source code for the old dataset, to be integrated with WSTS**  
 ```
+
+## References 
+**WildfireSpreadTS: A dataset of multi-modal time series for wildfire spread prediction**
+S. Gerard, Y. Zhao, and J. Sullivan, “WildfireSpreadTS: A dataset of multi-modal time series for wildfire spread prediction,” Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track, 2023. [Online]. Available: https://openreview.net/forum?id=RgdGkPRQ03
+
+**CBAM: Convolutional Block Attention Module**
+S. Woo, J. Park, J.-Y. Lee, and I. S. Kweon, “CBAM: Convolutional block attention module,” arXiv preprint arXiv:1807.06521, 2018. [Online]. Available: https://arxiv.org/abs/1807.06521
 
 --------
 
