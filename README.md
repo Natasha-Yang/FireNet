@@ -41,10 +41,10 @@ python3 train.py --config=cfgs/convlstm_cbam/full_run.yaml \
 The most up-to-date code compatible with the **WildfireSpreadTS** dataset is currently located in **WSTS**. Since we recently transitioned datasets, we are in the process of migrating documents from **WSTS** to our main module, **FireNet**.  
 
 ```
-├── LICENSE            <- Open-source license if one is chosen
-├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
-├── WSTS               <- **Latest working code compatible with the WildfireSpreadTS dataset**
+├── LICENSE            
+├── Makefile           
+├── README.md          
+├── WSTS               <- Latest working code compatible with the WildfireSpreadTS dataset
 │   ├── cfgs           <- YAML configuration files for trainer, data loader, and model settings
 │   ├── src            <- Main working directory containing models and preprocessing code
     │   ├── __init__.py         
@@ -52,33 +52,31 @@ The most up-to-date code compatible with the **WildfireSpreadTS** dataset is cur
     │   ├── dataloader         
     │   ├── models 
 ├── data
-│   ├── external       <- Data from third party sources.
-│   ├── interim        <- Intermediate data that has been transformed.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
+│   ├── external       
+│   ├── interim        
+│   ├── processed      
+│   └── raw            
 │
-├── docs               <- A default mkdocs project; see www.mkdocs.org for details
+├── docs               
 │
-├── models             <- Trained and serialized models, model predictions, or model summaries
+├── models             
 │
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
+├── notebooks          
 │
-├── pyproject.toml     <- Project configuration file with package metadata for 
-│                         firenet and configuration for tools like black
+├── pyproject.toml      
+│                         
 │
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+├── references         
 │
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
+├── reports            
+│   └── figures        
 │
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
+├── requirements.txt  
+│                         
 │
-├── setup.cfg          <- Configuration file for flake8
+├── setup.cfg          
 │
-└── firenet            <- **Outdated source code for the old dataset, to be integrated with WSTS**  
+└── firenet            <- Outdated source code for the old dataset, to be integrated with WSTS
 ```
 
 ## References 
