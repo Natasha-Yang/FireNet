@@ -8,18 +8,7 @@ import yaml
 NO_DATA = 0
 NO_DATA_FLOAT = -9999.0
 PERCENTILES = (2, 98)
-config_path = "prithvi/config.json"
-with open(config_path, "r") as f:
-    config = yaml.safe_load(f)['pretrained_cfg']
-mean = config['mean']
-std = config['std']
 
-def preprocess_image(image):
-    # normalize image
-    normalized = image.copy()
-    normalized = ((image - mean) / std)
-    normalized = torch.from_numpy(normalized.reshape(1, normalized.shape[0], 1, *normalized.shape[-2:])).to(torch.float32)
-    return normalized
 
 def load_raster(path, crop=None):
     with rasterio.open(path) as src:
