@@ -1,0 +1,13 @@
+prefix=/Users/natashayang/FireNet/.conda
+exec_prefix=/Users/natashayang/FireNet/.conda
+libdir=/Users/natashayang/FireNet/.conda/lib
+sharedlibdir=/Users/natashayang/FireNet/.conda/lib
+includedir=/Users/natashayang/FireNet/.conda/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.2.13
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}
