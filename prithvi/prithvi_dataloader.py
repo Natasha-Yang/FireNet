@@ -50,7 +50,7 @@ class FireNetDataset():
                                               n_leading_observations=self.n_leading_observations,
                                               n_leading_observations_test_adjustment=self.n_leading_observations_test_adjustment,
                                               crop_side_length=self.crop_side_length,
-                                              load_from_hdf5=self.load_from_hdf5, is_train=False,
+                                              load_from_hdf5=self.load_from_hdf5, is_train=True,
                                               remove_duplicate_features=self.remove_duplicate_features,
                                               features_to_keep=self.features_to_keep, return_doy=self.return_doy,
                                               stats_years=train_years)
@@ -106,9 +106,18 @@ def main():
     dataset = FireNetDataset(**config)
     print(f"Dataset loaded from: {config['data_dir']}")
     dataset.setup()
-    train_loader = dataset.train_dataloader
-    val_loader = dataset.val_dataloader
-    test_loader = dataset.test_dataloader
+    train_loader = dataset.train_dataloader()
+    val_loader = dataset.val_dataloader()
+    test_loader = dataset.test_dataloader()
+
+    for batch in val_loader:
+        if isinstance(batch, (tuple, list)):
+            x, y = batch
+            print(f"x shape: {x.shape}")
+            print(f"y shape: {y.shape}")
+        else:
+            print(f"Batch shape: {batch.shape}")
+        break  # Only print the first batch
 
 if __name__ == '__main__':
     main()

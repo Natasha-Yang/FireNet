@@ -6,8 +6,7 @@ from torch.utils.data import Dataset
 import torch
 import torch.nn.functional as F
 import numpy as np
-# from torch.utils.data.dataset import T_co
-from torch.utils.data.distributed import _T_co as T_co
+from torch.utils.data.dataset import _T_co
 import glob
 import warnings
 from .utils import get_means_stds_missing_values, get_indices_of_degree_features
@@ -176,7 +175,7 @@ class FireSpreadDataset(Dataset):
             x, y = loaded_imgs
 
         x, y = self.preprocess_and_augment(x, y)
-
+    
         # Remove duplicate static features, which can greatly reduce the number of features, since we use 
         # one-hot encoded landcover types. The result would have different amounts of feature channels per 
         # time step, therefore, we flatten the temporal dimension.
@@ -190,7 +189,7 @@ class FireSpreadDataset(Dataset):
             x = x[:, self.features_to_keep, ...]
 
         x = x.permute(1, 0, 2, 3)  # from (T, C, H, W) to (C, T, H, W)
-
+        
         if self.return_doy:
             return x, y, doys
         return x, y
@@ -403,10 +402,10 @@ class FireSpreadDataset(Dataset):
         for i in range(10):
             top = np.random.randint(0, x.shape[-2] - self.crop_side_length)
             left = np.random.randint(0, x.shape[-1] - self.crop_side_length)
-            x_crop = TF.crop(
-                x, top, left, self.crop_side_length, self.crop_side_length)
-            y_crop = TF.crop(
-                y, top, left, self.crop_side_length, self.crop_side_length)
+            x_crop = x[..., top:top+self.crop_side_length, left:left+self.crop_side_length]
+            y_crop = y[..., top:top+self.crop_side_length, left:left+self.crop_side_length]
+
+            
 
             # We really care about having fire pixels in the target. But if we don't find any there,
             # we care about fire pixels in the input, to learn to predict that no new observations will be made,
