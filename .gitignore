@@ -3,6 +3,8 @@
 *.png
 *.mp4
 *.csv
+*.pt
+*.tiff
 *.tif
 *.DS_Store
 *.hdf5
