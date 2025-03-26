@@ -5,5 +5,5 @@ crop_side_length: 224
 load_from_hdf5: false
 num_workers: 8
 remove_duplicate_features: false
-features_to_keep: [0, 1, 2, 3, 4, 5]
+features_to_keep: [34, 35, 36, 37, 38, 39]
 n_leading_observations_test_adjustment: 5

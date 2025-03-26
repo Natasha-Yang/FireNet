@@ -23,7 +23,8 @@ def run_model(
     rec_img[mask_img == 1] = pred_img[mask_img == 1]
 
     # Convert mask to binary visualization format
-    mask_img = (~(mask_img.to(torch.bool))).to(torch.float)
+    mask_img = (~(mask_img.to(torch.bool))).to(torch.float) # swaps 0s and 1s
+    # 1 = keep, 0 = remove
 
     # Move outputs to CPU for saving or visualization
     return rec_img.detach().cpu(), mask_img.detach().cpu()
@@ -43,28 +44,30 @@ def visualize_mae_outputs(x, mask_img, rec_img, bands=[3, 2, 1]):
     mask_img is expected to be 1 where patches were masked, and 0 where visible.
     All tensors: (1, C, T, H, W)
     """
-    x = x.squeeze(0).cpu()            # (C, T, H, W)
-    mask_img = mask_img.squeeze(0).cpu()  # same shape
+    x = x.squeeze(0).cpu()           # (C, T, H, W)
+    mask_img = mask_img.squeeze(0).cpu()
     rec_img = rec_img.squeeze(0).cpu()
 
     C, T, H, W = x.shape
     fig, axes = plt.subplots(T, 3, figsize=(12, 4 * T))
 
     for t in range(T):
-        original = enhance_for_display(x[bands, t].permute(1, 2, 0))
+        # Extract the time slice and RGB bands
+        original = enhance_for_display(x[bands, t].permute(1, 2, 0)) # (H, W, 3)
         reconstructed = enhance_for_display(rec_img[bands, t].permute(1, 2, 0))
 
-        # Create visual masked image
-        masked = original.clone()
-        for c in range(3):  # RGB channels
-            masked[..., c][mask_img[bands[c], t] > 0.5] = 0  # zero out masked areas
+        # Build a visual mask from mask_img (0=visible, 1=masked)
+        visual_mask = mask_img[bands, t]  # (3, H, W)
+        visual_mask = visual_mask.permute(1, 2, 0)  # (H, W, 3)
+
+        masked = original * visual_mask
 
         axes[t, 0].imshow(original)
         axes[t, 0].set_title(f"Original t={t}")
         axes[t, 0].axis("off")
 
         axes[t, 1].imshow(masked)
-        axes[t, 1].set_title(f"Masked (visual) t={t}")
+        axes[t, 1].set_title(f"Masked input t={t}")
         axes[t, 1].axis("off")
 
         axes[t, 2].imshow(reconstructed)
@@ -74,6 +77,7 @@ def visualize_mae_outputs(x, mask_img, rec_img, bands=[3, 2, 1]):
     plt.tight_layout()
     plt.savefig("prithvi_wsts.png")
     plt.show()
+
 
 
 def main():
@@ -86,11 +90,6 @@ def main():
     batch_size = 1
     bands = model_config['bands']
     num_frames = 3
-    mean = [1.95905826e+03,  2.94404070e+03,  1.80315792e+03,  4.18785304e+03,
-            2.20147914e+03,  4.75643503e-01]
-    std = [1.13697378e+03, 1.63707682e+03, 1.89291266e+03, 2.21105881e+03,
-            1.12833037e+03, 2.15286520e+00]
-    img_size = model_config['img_size']
 
 
     if torch.cuda.is_available():
