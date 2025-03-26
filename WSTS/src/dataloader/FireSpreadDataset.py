@@ -362,6 +362,17 @@ class FireSpreadDataset(Dataset):
 
         return x, y
 
+    def pad_if_needed(self, x, crop_size):
+        h, w = x.shape[-2], x.shape[-1]
+        pad_h = max(0, crop_size - h)
+        pad_w = max(0, crop_size - w)
+
+        # Pad format: (left, right, top, bottom)
+        padding = (0, pad_w, 0, pad_h)  # pad right and bottom only
+        if pad_h > 0 or pad_w > 0:
+            x = TF.pad(x, padding, fill=0)
+        return x
+
     def augment(self, x, y):
         """_summary_ Applies geometric transformations: 
           1. random square cropping, preferring images with a) fire pixels in the output and b) (with much less weight) fire pixels in the input
@@ -381,6 +392,9 @@ class FireSpreadDataset(Dataset):
         # Try several crops, prefer the ones with most fire pixels in output, followed by most fire_pixels in input
         best_n_fire_pixels = -1
         best_crop = (None, None)
+
+        x = self.pad_if_needed(x, self.crop_side_length)
+        y = self.pad_if_needed(y, self.crop_side_length)
 
         for i in range(10):
             top = np.random.randint(0, x.shape[-2] - self.crop_side_length)
