@@ -8,3 +8,4 @@
 *.hdf5
 .venv
 .conda
+.conda/
