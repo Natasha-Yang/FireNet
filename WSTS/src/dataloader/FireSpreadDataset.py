@@ -190,8 +190,6 @@ class FireSpreadDataset(Dataset):
             x = x[:, self.features_to_keep, ...]
 
         x = x.permute(1, 0, 2, 3)  # from (T, C, H, W) to (C, T, H, W)
-        x = x.unsqueeze(0)         # add batch dimension → (1, C, T, H, W)
-        y = y.unsqueeze(0)         # (1, H, W)
 
         if self.return_doy:
             return x, y, doys

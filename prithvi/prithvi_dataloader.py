@@ -1,5 +1,5 @@
 import os
-from ..WSTS.src.dataloader.FireSpreadDataset import FireSpreadDataset
+from WSTS.src.dataloader.FireSpreadDataset import FireSpreadDataset
 from torch.utils.data import DataLoader
 from typing import List, Optional, Union
 import yaml
@@ -101,7 +101,7 @@ class FireNetDataset():
         return train_years, val_years, test_years
 
 def main():
-    with open("prithvi.yaml", "r") as f:
+    with open("prithvi/prithvi.yaml", "r") as f:
         config = yaml.safe_load(f)
     dataset = FireNetDataset(**config)
     print(f"Dataset loaded from: {config['data_dir']}")
