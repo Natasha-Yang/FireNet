@@ -4,6 +4,7 @@ from typing import List, Optional
 import rasterio
 from torch.utils.data import Dataset
 import torch
+import torch.nn.functional as F
 import numpy as np
 from torch.utils.data.dataset import T_co
 import glob
@@ -186,6 +187,10 @@ class FireSpreadDataset(Dataset):
             if len(x.shape) != 4:
                 raise NotImplementedError(f"Removing features is only implemented for 4D tensors, but got {x.shape=}.")
             x = x[:, self.features_to_keep, ...]
+
+        x = x.permute(1, 0, 2, 3)  # from (T, C, H, W) to (C, T, H, W)
+        x = x.unsqueeze(0)         # add batch dimension → (1, C, T, H, W)
+        y = y.unsqueeze(0)         # (1, H, W)
 
         if self.return_doy:
             return x, y, doys
@@ -370,7 +375,7 @@ class FireSpreadDataset(Dataset):
         # Pad format: (left, right, top, bottom)
         padding = (0, pad_w, 0, pad_h)  # pad right and bottom only
         if pad_h > 0 or pad_w > 0:
-            x = TF.pad(x, padding, fill=0)
+            x = F.pad(x, padding, mode='constant', value=0)
         return x
 
     def augment(self, x, y):
