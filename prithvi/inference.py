@@ -312,13 +312,13 @@ def main(
 
     print(f"Using {device} device.\n")
 
-    # Loading data ---------------------------------------------------------------------------------
+    # Loading data --------------------------------------------------------------------------------
 
     input_data, meta_data = load_example(
         file_paths=data_files, indices=input_indices, mean=mean, std=std
     )
 
-    # Create model and load checkpoint -------------------------------------------------------------
+    # Create model and load checkpoint ------------------------------------------------------------
 
     config.update(
         num_frames=num_frames,
@@ -332,7 +332,7 @@ def main(
 
     model.to(device)
 
-    state_dict = torch.load(checkpoint, map_location=device)
+    state_dict = torch.load(checkpoint, map_location=device, weights_only=False)
     # discard fixed pos_embedding weight
     for k in list(state_dict.keys()):
         if 'pos_embed' in k:

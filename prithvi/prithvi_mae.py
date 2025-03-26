@@ -474,7 +474,7 @@ class MAEDecoder(nn.Module):
                  coords_encoding: List[str] | None = None,
                  coords_scale_learn: bool = False,
                  ):
-        super().__init__()
+        super().__init__() 
 
         self.decoder_embed = nn.Linear(encoder_embed_dim, decoder_embed_dim, bias=True)
         self.decoder_embed_dim = decoder_embed_dim
