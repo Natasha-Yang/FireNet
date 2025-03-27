@@ -55,7 +55,7 @@ def visualize_mae_outputs(x, mask_img, rec_img, bands=[3, 2, 1]):
     mask_img is expected to be 1 where patches were masked, and 0 where visible.
     All tensors: (1, C, T, H, W)
     """
-    x = x.squeeze(0).cpu()           # (C, T, H, W)
+    x = x.squeeze(0).cpu() # (C, T, H, W)
     mask_img = mask_img.squeeze(0).cpu()
     rec_img = rec_img.squeeze(0).cpu()
 
