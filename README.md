@@ -1,61 +1,97 @@
-# FireNet
+---
+
+# FireNet  
 
 <a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
-</a>
+</a>  
 
-Spatio-temporal Multimodal Wildfire Spread Prediction
+**Spatio-temporal Multimodal Wildfire Spread Prediction**  
+
+## Setup  
+Install the required dependencies using:  
+```bash
+pip install -r requirements.txt
+```  
+
+## Downloading and Preparing the Dataset  
+This repository uses the **WildfireSpreadTS** dataset, which is freely available at [Zenodo](https://zenodo.org/records/8006177).  
+
+To speed up training, convert the dataset to HDF5 format by running:  
+```bash
+python3 src/preprocess/CreateHDF5Dataset.py --data_dir YOUR_DATA_DIR --target_dir YOUR_TARGET_DIR
+```  
+
+## Running Experiments  
+Run training with the following command:  
+```bash
+python3 train.py --config=cfgs/convlstm_cbam/full_run.yaml \
+                 --trainer=cfgs/trainer_single_gpu.yaml \
+                 --data=cfgs/data_monotemporal_full_features.yaml \
+                 --seed_everything=0 \
+                 --trainer.max_epochs=200 \
+                 --do_test=True \
+                 --data.data_dir YOUR_DATA_DIR \
+                 --model_name YOUR_MODEL_NAME
+```  
+
+---
 
 ## Project Organization
+The most up-to-date code compatible with the **WildfireSpreadTS** dataset is currently located in **WSTS**. Since we recently transitioned datasets, we are in the process of migrating documents from **WSTS** to our main module, **FireNet**.  
 
 ```
-├── LICENSE            <- Open-source license if one is chosen
-├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
+├── LICENSE            
+├── Makefile           
+├── README.md          
+├── WSTS               <- Latest working code compatible with the WildfireSpreadTS dataset
+│   ├── cfgs           <- YAML configuration files for trainer, data loader, and model settings
+│   ├── src            <- Main working directory containing models and preprocessing code
+    │   ├── __init__.py         
+    │   └── train.py
+    │   ├── dataloader         
+    │   ├── models 
 ├── data
-│   ├── external       <- Data from third party sources.
-│   ├── interim        <- Intermediate data that has been transformed.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
+│   ├── external       
+│   ├── interim        
+│   ├── processed      
+│   └── raw                        
 │
-├── docs               <- A default mkdocs project; see www.mkdocs.org for details
+├── prithvi100m
+|   ├── prithvi                <- Latest working code modifications to Prithvi 100M ViT
+    │   ├── examples           <- default flood segmentation input files (to be changed)
+    │   ├── output            <- Main working directory containing models and preprocessing code
+        ├── __init__.py         
+        ├── inference.py
+        ├── features.py
+        ├── inference_wsts.py
+        ├── prithvi_dataloader.py
+        ├── prithvi_mae.py
+    ├── exploration.ipynb
+    ├── prithvi_visualization.py
+├── notebooks          
 │
-├── models             <- Trained and serialized models, model predictions, or model summaries
+├── pyproject.toml      
+│                         
+│       
 │
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
+├── reports            
+│   └── figures        
 │
-├── pyproject.toml     <- Project configuration file with package metadata for 
-│                         firenet and configuration for tools like black
+├── requirements.txt  
+│                         
 │
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+├── setup.cfg          
 │
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
-│
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
-│
-├── setup.cfg          <- Configuration file for flake8
-│
-└── firenet   <- Source code for use in this project.
-    │
-    ├── __init__.py             <- Makes firenet a Python module
-    │
-    ├── config.py               <- Store useful variables and configuration
-    │
-    ├── dataset.py              <- Scripts to download or generate data
-    │
-    ├── features.py             <- Code to create features for modeling
-    │
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
-    │   └── train.py            <- Code to train models
-    │
-    └── plots.py                <- Code to create visualizations
+└── NDWS            <- Outdated source code for the old dataset, to be integrated with WSTS
 ```
+
+## References 
+**WildfireSpreadTS: A dataset of multi-modal time series for wildfire spread prediction**
+S. Gerard, Y. Zhao, and J. Sullivan, “WildfireSpreadTS: A dataset of multi-modal time series for wildfire spread prediction,” Thirty-seventh Conference on Neural Information Processing Systems Datasets and Benchmarks Track, 2023. [Online]. Available: https://openreview.net/forum?id=RgdGkPRQ03
+
+**CBAM: Convolutional Block Attention Module**
+S. Woo, J. Park, J.-Y. Lee, and I. S. Kweon, “CBAM: Convolutional block attention module,” arXiv preprint arXiv:1807.06521, 2018. [Online]. Available: https://arxiv.org/abs/1807.06521
 
 --------
 
