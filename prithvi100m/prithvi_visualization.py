@@ -38,17 +38,17 @@ def enhance_raster_for_visualization(raster, ref_img=None):
 
 
 # Load the TIFF file (change crop size or remove it if needed)
-original0 = load_raster("../prithvi/output/original_rgb_t0.tiff")
-pred0 = load_raster("../prithvi/output/predicted_rgb_t0.tiff")
-masked0 = load_raster("../prithvi/output/masked_rgb_t0.tiff")
+original0 = load_raster("prithvi/output/original_rgb_t0.tiff")
+pred0 = load_raster("prithvi/output/predicted_rgb_t0.tiff")
+masked0 = load_raster("prithvi/output/masked_rgb_t0.tiff")
 
-original1 = load_raster("../prithvi/output/original_rgb_t1.tiff")
-pred1 = load_raster("../prithvi/output/predicted_rgb_t1.tiff")
-masked1 = load_raster("../prithvi/output/masked_rgb_t1.tiff")
+original1 = load_raster("prithvi/output/original_rgb_t1.tiff")
+pred1 = load_raster("prithvi/output/predicted_rgb_t1.tiff")
+masked1 = load_raster("prithvi/output/masked_rgb_t1.tiff")
 
-original2 = load_raster("../prithvi/output/original_rgb_t2.tiff")
-pred2 = load_raster("../prithvi/output/predicted_rgb_t2.tiff")
-masked2 = load_raster("../prithvi/output/masked_rgb_t2.tiff")
+original2 = load_raster("prithvi/output/original_rgb_t2.tiff")
+pred2 = load_raster("prithvi/output/predicted_rgb_t2.tiff")
+masked2 = load_raster("prithvi/output/masked_rgb_t2.tiff")
 
 # Organize into rows for plotting
 images = [
