@@ -1,5 +1,3 @@
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
 from prithvi_dataloader import FireNetDataset
 from prithvi_mae import PrithviMAE
 import torch
@@ -25,7 +23,7 @@ def run_model(
     with torch.no_grad():
         x = input_data.to(device)
 
-        latent_rep, pred, mask = model(x, mask_ratio=mask_ratio)
+        _, pred, mask = model(x, mask_ratio=mask_ratio)
 
     # Create mask and prediction images (un-patchify) → KEEP ON GPU
     mask_img = model.unpatchify(mask.unsqueeze(-1).repeat(1, 1, pred.shape[-1]))
@@ -42,6 +40,8 @@ def run_model(
     # Move outputs to CPU for saving or visualization
     return rec_img.detach().cpu(), mask_img.detach().cpu()
 
+import matplotlib.pyplot as plt
+import torch
 
 def enhance_for_display(img):
     img = img.clone()
@@ -89,11 +89,10 @@ def visualize_mae_outputs(x, mask_img, rec_img, bands=[3, 2, 1]):
     plt.savefig("prithvi_wsts.png")
     plt.show()
 
-
 def main():
-    checkpoint = "prithvi100m/prithvi/Prithvi_EO_V1_100M.pt"
+    checkpoint = "prithvi/Prithvi_EO_V1_100M.pt"
 
-    model_config_path = "prithvi100m/prithvi/config.json"
+    model_config_path = "prithvi/config.json"
     with open(model_config_path, "r") as f:
         model_config = yaml.safe_load(f)['pretrained_cfg']
     
@@ -111,7 +110,7 @@ def main():
 
     # Loading data ---------------------------------------------------------------------------------
 
-    with open("prithvi100m/prithvi/prithvi.yaml", "r") as f:
+    with open("prithvi/prithvi.yaml", "r") as f:
         data_config = yaml.safe_load(f)
     dataset = FireNetDataset(**data_config)
 
@@ -154,11 +153,10 @@ def main():
         for x, y in test_loader:
             x = x.to(device)  # x shape: (1, C, T, H, W)
             x_mapped = linear_mapping(x)
-            latent_rep, rec_img, mask_img = run_model(model, x_mapped, mask_ratio=mask_ratio, device=device)
+            rec_img, mask_img = run_model(model, x_mapped, mask_ratio=mask_ratio, device=device)
             print(f"Reconstructed shape: {rec_img.shape}")
             print(f"Mask shape: {mask_img.shape}")
             print(f"Mask ratio: {mask_ratio}")
-
             visualize_mae_outputs(x_mapped, mask_img, rec_img, bands=[3, 2, 1])
 
             break  # Only run on one batch
