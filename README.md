@@ -55,18 +55,25 @@ The most up-to-date code compatible with the **WildfireSpreadTS** dataset is cur
 │   ├── external       
 │   ├── interim        
 │   ├── processed      
-│   └── raw            
+│   └── raw                        
 │
-├── docs               
-│
-├── models             
-│
+├── prithvi100m
+|   ├── prithvi                <- Latest working code modifications to Prithvi 100M ViT
+    │   ├── examples           <- default flood segmentation input files (to be changed)
+    │   ├── output            <- Main working directory containing models and preprocessing code
+        ├── __init__.py         
+        ├── inference.py
+        ├── features.py
+        ├── inference_wsts.py
+        ├── prithvi_dataloader.py
+        ├── prithvi_mae.py
+    ├── exploration.ipynb
+    ├── prithvi_visualization.py
 ├── notebooks          
 │
 ├── pyproject.toml      
 │                         
-│
-├── references         
+│       
 │
 ├── reports            
 │   └── figures        
@@ -76,7 +83,7 @@ The most up-to-date code compatible with the **WildfireSpreadTS** dataset is cur
 │
 ├── setup.cfg          
 │
-└── firenet            <- Outdated source code for the old dataset, to be integrated with WSTS
+└── NDWS            <- Outdated source code for the old dataset, to be integrated with WSTS
 ```
 
 ## References 

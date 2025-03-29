@@ -10,9 +10,9 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from torch.nn.utils.rnn import pad_sequence
-from firenet.constants_NDWS import *
+from NDWS.constants_NDWS import *
 
-from firenet.config import *
+from NDWS.config import *
 import os
 import glob
 import json
