@@ -10,13 +10,17 @@ from tqdm import tqdm
 import yaml
 import os
 from argparse import Namespace
+import wandb
+
 
 class LinearMappingLayer(nn.Module):
     def __init__(self, input_channels, output_channels):
-        super(LinearMappingLayer, self).__init__()
-        # Use Conv3d to map 23 input channels to 6 output channels
-        self.linear = nn.Conv3d(input_channels, output_channels, kernel_size=1)
-
+        super().__init__()
+        # Use Conv3d to map 39 input channels to 6 output channels
+        self.linear = nn.Sequential(
+            nn.Conv3d(39, 5, kernel_size=1),
+            nn.BatchNorm3d(5) # normalize across batch and spatial dims
+        )
     def forward(self, x):
         # x shape: (B, C, T, H, W)
         return self.linear(x)
@@ -99,18 +103,16 @@ class CNNDecoder(nn.Module):
         x = x.squeeze(1)         # (B, 224, 224)
         return x
 
+
+
 class SegformerMLP(nn.Module):
-    """
-    Linear Embedding.
-    """
-    def __init__(self, config, input_dim):
+    def __init__(self, input_dim, output_dim):
         super().__init__()
-        self.proj = nn.Linear(input_dim, config.decoder_hidden_size)
+        self.proj = nn.Linear(input_dim, output_dim)
 
     def forward(self, hidden_states: torch.Tensor):
-        # hidden_states: (B, C, H, W)
-        hidden_states = hidden_states.flatten(2).transpose(1, 2)  # -> (B, H*W, C)
-        hidden_states = self.proj(hidden_states)                  # -> (B, H*W, decoder_hidden_size)
+        hidden_states = hidden_states.flatten(2).transpose(1, 2)  # (B, H*W, C)
+        hidden_states = self.proj(hidden_states)                  # (B, H*W, decoder_dim)
         return hidden_states
 
 
@@ -127,23 +129,26 @@ class SegformerDecoderHead(nn.Module):
                 - (optional) decoder_output_size: desired final output spatial size (H_out, W_out).
         """
         super().__init__()
-        # Create one MLP for each encoder stage we want to use.
+        assert len(config.decoder_hidden_sizes) == config.num_encoder_stages
         self.mlps = nn.ModuleList([
-            SegformerMLP(config, input_dim=hidden_size)
-            for hidden_size in config.hidden_sizes[:config.num_encoder_stages]
+            SegformerMLP(input_dim, output_dim)
+            for input_dim, output_dim in zip(config.hidden_sizes, config.decoder_hidden_sizes)
         ])
-        # Fusion layer: Concatenate processed features along the channel dimension.
-        self.linear_fuse = nn.Conv2d(
-            in_channels=config.decoder_hidden_size * config.num_encoder_stages,
-            out_channels=config.decoder_hidden_size,
+
+        total_decoder_channels = sum(config.decoder_hidden_sizes)
+        self.fuse_conv = nn.Conv2d(
+            in_channels=total_decoder_channels,
+            out_channels=config.decoder_hidden_sizes[-1],  # or any target
             kernel_size=1,
-            bias=False,
+            bias=False
         )
-        self.batch_norm = nn.BatchNorm2d(config.decoder_hidden_size)
+
+        self.batch_norm = nn.BatchNorm2d(config.decoder_hidden_sizes[-1])
         self.activation = nn.ReLU()
         self.dropout = nn.Dropout(config.classifier_dropout_prob)
-        self.classifier = nn.Conv2d(config.decoder_hidden_size, config.num_labels, kernel_size=1)
+        self.classifier = nn.Conv2d(config.decoder_hidden_sizes[-1], config.num_labels, kernel_size=1)
         self.config = config
+
 
     def forward(self, encoder_hidden_states: list) -> torch.Tensor:
         """
@@ -153,32 +158,27 @@ class SegformerDecoderHead(nn.Module):
             logits: Segmentation logits of shape (B, num_labels, H_out, W_out)
         """
         batch_size = encoder_hidden_states[0].size(0)
+        target_size = encoder_hidden_states[0].shape[2:]  # Highest-res stage
+
         processed_states = []
-        # Use the spatial size of the first (usually highest-resolution) stage as target.
-        target_size = encoder_hidden_states[0].squeeze(2).shape[2:]  # (H0, W0)
-        for state, mlp in zip(encoder_hidden_states, self.mlps):
-            x = state  # shape: (B, embedding_dim, H, W)
-            H, W = x.shape[2], x.shape[3]
-            # Apply the MLP to project to decoder_hidden_size.
-            x = mlp(x)  # -> (B, H*W, decoder_hidden_size)
-            # Reshape back to (B, decoder_hidden_size, H, W)
-            x = x.transpose(1, 2).view(batch_size, self.config.decoder_hidden_size, H, W)
-            # Upsample to the target size.
-            x = F.interpolate(x, size=target_size, mode="bilinear", align_corners=False)
-            processed_states.append(x)
-        # Concatenate along the channel dimension.
-        x = torch.cat(processed_states, dim=1)
-        # Fuse features.
-        x = self.linear_fuse(x)
+        for state, mlp, out_dim in zip(encoder_hidden_states, self.mlps, self.config.decoder_hidden_sizes):
+            H, W = state.shape[2], state.shape[3]
+            state = mlp(state)  # (B, H*W, decoder_dim)
+            state = state.transpose(1, 2).view(batch_size, out_dim, H, W)  # (B, decoder_dim, H, W)
+            state = F.interpolate(state, size=target_size, mode="bilinear", align_corners=False)
+            processed_states.append(state)
+
+        x = torch.cat(processed_states, dim=1)  # (B, sum(decoder_dims), H, W)
+        x = self.fuse_conv(x)
         x = self.batch_norm(x)
         x = self.activation(x)
         x = self.dropout(x)
-        # Optionally upsample to a final output size if provided.
+
         if hasattr(self.config, "decoder_output_size"):
             x = F.interpolate(x, size=self.config.decoder_output_size, mode="bilinear", align_corners=False)
+
         logits = self.classifier(x)
         return logits
-
 
 
 
@@ -195,25 +195,29 @@ class FireNet(nn.Module):
         x_env_mapped = self.linear_map(x_env) # (B, 6, T, H, W)
         x_combined = torch.cat([x_env_mapped, x_fire], dim=1)
         z = self.encoder(x_combined) # (B, embedding_dim, T, H', W')
-        out = self.decoder(z) # (B, 224, 224)
+        out = self.decoder(z)
         return out
 
 
+def train_firenet(model, train_loader, val_loader, device, num_epochs=10,
+                  lr_frozen=1e-3, lr_unfrozen=1e-4,
+                  log_file="train_logs/training_log.txt", model_dir="saved_models",
+                  patience=5, early_stop_patience=10):
 
-def train_firenet(model, train_loader, val_loader, device, num_epochs=10, lr=1e-3,
-                  log_file="train_logs/training_log.txt", model_dir="saved_models"):
     # Freeze encoder
+    encoder_frozen = False
     if hasattr(model, 'encoder'):
         for param in model.encoder.parameters():
             param.requires_grad = False
         model.encoder.eval()
+        encoder_frozen = True
 
-    # Loss, optimizer, and metrics
-    criterion = JaccardLoss(mode="binary")
+    criterion = JaccardLoss(mode="binary", from_logits=True)
     train_f1 = torchmetrics.F1Score(task="binary").to(device)
     val_f1 = torchmetrics.F1Score(task="binary").to(device)
+
     optimizer = torch.optim.Adam(
-        filter(lambda p: p.requires_grad, model.parameters()), lr=lr
+        filter(lambda p: p.requires_grad, model.parameters()), lr=lr_frozen
     )
 
     model.to(device)
@@ -221,6 +225,10 @@ def train_firenet(model, train_loader, val_loader, device, num_epochs=10, lr=1e-
     os.makedirs(model_dir, exist_ok=True)
 
     best_val_loss = float('inf')
+    epochs_since_improvement = 0
+    early_stop_counter = 0
+    scheduler = None
+    unfreeze_epoch = None
 
     for epoch in range(num_epochs):
         model.train()
@@ -238,7 +246,6 @@ def train_firenet(model, train_loader, val_loader, device, num_epochs=10, lr=1e-
             optimizer.step()
 
             total_loss += loss.item()
-            # From shape: (B, 1, H, W) → (B, H, W)
             preds = preds.squeeze(1)
             train_f1(preds, y.int())
 
@@ -248,20 +255,66 @@ def train_firenet(model, train_loader, val_loader, device, num_epochs=10, lr=1e-
 
         avg_val_loss, val_f1_score = validate_firenet(model, val_loader, device, criterion, val_f1)
 
+        # Log metrics to wandb
+        wandb.log({
+            "epoch": epoch + 1,
+            "train_loss": avg_train_loss,
+            "train_f1": train_f1_score,
+            "val_loss": avg_val_loss,
+            "val_f1": val_f1_score,
+            "learning_rate": optimizer.param_groups[0]["lr"],
+        })
+
         # Save model only if validation loss improves
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
+            epochs_since_improvement = 0
+            early_stop_counter = 0
             best_model_path = os.path.join(model_dir, "best_model.pt")
             torch.save(model.state_dict(), best_model_path)
+            wandb.run.summary["best_val_loss"] = best_val_loss
+            wandb.run.summary["best_epoch"] = epoch + 1
             print(f"✅ Model improved. Saved to {best_model_path}")
+        else:
+            epochs_since_improvement += 1
+            early_stop_counter += 1
+            print(f"⚠️ No improvement for {epochs_since_improvement} epoch(s)")
 
-        # Log to text file
+        # Unfreeze encoder and reduce LR on plateau
+        if encoder_frozen and epochs_since_improvement >= patience:
+            print(f"Unfreezing encoder and lowering LR at epoch {epoch+1}")
+            wandb.log({"encoder_unfrozen_epoch": epoch + 1})
+            with open(log_file, "a") as f:
+                f.write(f"Encoder unfrozen at epoch {epoch+1}\n")
+
+            for param in model.encoder.parameters():
+                param.requires_grad = True
+            model.encoder.train()
+
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr_unfrozen)
+            scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, verbose=True)
+            encoder_frozen = False
+            unfreeze_epoch = epoch + 1
+            early_stop_counter = 0
+
+        # Step scheduler only after unfreezing
+        if scheduler is not None:
+            scheduler.step(avg_val_loss)
+
+        # Early stopping check
+        if not encoder_frozen and early_stop_counter >= early_stop_patience:
+            print(f"Early stopping triggered at epoch {epoch+1}")
+            wandb.log({"early_stopped_epoch": epoch + 1})
+            break
+
+        # Log to file (in addition to wandb)
         with open(log_file, "a") as f:
             f.write(
                 f"Epoch {epoch+1}: "
                 f"Train Loss: {avg_train_loss:.4f}, Train F1: {train_f1_score:.4f}, "
                 f"Val Loss: {avg_val_loss:.4f}, Val F1: {val_f1_score:.4f}\n"
             )
+
 
 def validate_firenet(model, val_loader, device, criterion, val_f1):
     model.eval()
@@ -272,11 +325,9 @@ def validate_firenet(model, val_loader, device, criterion, val_f1):
         for x, y in val_loader:
             x = x.to(device)
             y = y.to(device).float()
-
             preds = model(x)
             loss = criterion(preds, y)
             total_loss += loss.item()
-            # From shape: (B, 1, H, W) → (B, H, W)
             preds = preds.squeeze(1)
             val_f1(preds, y.int())
 
@@ -333,17 +384,16 @@ def main():
     prithvi.load_state_dict(state_dict, strict=False)
     print(f"Loaded checkpoint from {checkpoint}")
 
-
     linear_map = LinearMappingLayer(input_channels=39, output_channels=5)
     encoder = PrithviEncoder(model=prithvi, device=device, num_frames=3)
     
     config = Namespace(
         num_encoder_stages=3,
         hidden_sizes=[768, 768, 768],
-        decoder_hidden_size=256,           # you choose this
-        classifier_dropout_prob=0.1,       # typical value
-        num_labels=1,                      # binary mask output
-        decoder_output_size=(224, 224)     # optional; match input resolution if needed
+        decoder_hidden_sizes=[768, 384, 192],           
+        classifier_dropout_prob=0.1,
+        num_labels=1,
+        decoder_output_size=(224, 224)
     )
 
     decoder = SegformerDecoderHead(config)
@@ -358,6 +408,7 @@ def main():
     train_firenet(firenet_model, train_loader, val_loader, device)
 
 if __name__ == '__main__':
+    wandb.init(project="firenet-training", name="fine-tuning")
     main()
 
 
