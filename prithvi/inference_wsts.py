@@ -1,7 +1,18 @@
 from prithvi_dataloader import FireNetDataset
 from prithvi_mae import PrithviMAE
 import torch
+import torch.nn as nn
 import yaml
+
+class LinearMappingLayer(nn.Module):
+    def __init__(self, input_channels, output_channels):
+        super(LinearMappingLayer, self).__init__()
+        # Use Conv3d to map 23 input channels to 6 output channels
+        self.linear = nn.Conv3d(input_channels, output_channels, kernel_size=1)
+
+    def forward(self, x):
+        # x shape: (B, C, T, H, W)
+        return self.linear(x)
 
 def run_model(
     model: torch.nn.Module,
@@ -90,6 +101,7 @@ def main():
     batch_size = 1
     bands = model_config['bands']
     num_frames = 3
+    img_size = model_config['img_size']
 
 
     if torch.cuda.is_available():
@@ -117,6 +129,7 @@ def main():
         num_frames=num_frames,
         in_chans=len(bands),
     )
+    mask_ratio = model_config['mask_ratio']
 
     model = PrithviMAE(**model_config)
 
@@ -134,15 +147,23 @@ def main():
     print(f"Loaded checkpoint from {checkpoint}")
 
     # Running model --------------------------------------------------------------------------------
+    
+    # Create the linear mapping layer and add it before the model
+    linear_mapping = LinearMappingLayer(input_channels=40, output_channels=6).to(device)
+
 
     model.eval()
+    linear_mapping.eval()
+
     with torch.no_grad():
         for x, y in test_loader:
             x = x.to(device)  # x shape: (1, C, T, H, W)
-            rec_img, mask_img = run_model(model, x, mask_ratio=0.5, device=device)
+            x_mapped = linear_mapping(x)
+            rec_img, mask_img = run_model(model, x_mapped, mask_ratio=mask_ratio, device=device)
             print(f"Reconstructed shape: {rec_img.shape}")
             print(f"Mask shape: {mask_img.shape}")
-            visualize_mae_outputs(x, mask_img, rec_img, bands=[3, 2, 1])
+            print(f"Mask ratio: {mask_ratio}")
+            visualize_mae_outputs(x_mapped, mask_img, rec_img, bands=[3, 2, 1])
 
             break  # Only run on one batch
 
