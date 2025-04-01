@@ -1,6 +1,7 @@
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.dirname(__file__).split("/src")[-2]))
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+sys.path.append(project_root)
 
 from src.dataloader.FireSpreadDataset import FireSpreadDataset
 import argparse
@@ -13,7 +14,7 @@ os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--data_dir", type=str,
+parser.add_argument('--data_dir', type=str,
                     help="Path to dataset directory", required=True)
 parser.add_argument("--target_dir", type=str,
                     help="Path to directory where the HDF5 files should be stored", required=True)
