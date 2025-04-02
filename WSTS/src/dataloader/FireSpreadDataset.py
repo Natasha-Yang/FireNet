@@ -13,13 +13,16 @@ from .utils import get_means_stds_missing_values, get_indices_of_degree_features
 import torchvision.transforms.functional as TF
 import h5py
 from datetime import datetime
+from tqdm import tqdm
+import pickle
+import os
 
 
 class FireSpreadDataset(Dataset):
     def __init__(self, data_dir: str, included_fire_years: List[int], n_leading_observations: int,
                  crop_side_length: int, load_from_hdf5: bool, is_train: bool, remove_duplicate_features: bool,
                  stats_years: List[int], n_leading_observations_test_adjustment: Optional[int] = None, 
-                 features_to_keep: Optional[List[int]] = None, return_doy: bool = False):
+                 features_to_keep: Optional[List[int]] = None, return_doy: bool = False, prithvi=False):
         """_summary_
 
         Args:
@@ -52,6 +55,8 @@ class FireSpreadDataset(Dataset):
         self.n_leading_observations_test_adjustment = n_leading_observations_test_adjustment
         self.included_fire_years = included_fire_years
         self.data_dir = data_dir
+        self.prithvi = prithvi
+        
 
         self.validate_inputs()
 
@@ -70,6 +75,8 @@ class FireSpreadDataset(Dataset):
         self.length = sum([sum(self.datapoints_per_fire[fire_year].values())
                           for fire_year in self.datapoints_per_fire])
 
+        #self.all_indices = self.filter_fires(cache_path="cached_fire_indices.pkl")
+
         # Used in preprocessing and normalization. Better to define it once than build/call for every data point
         # The one-hot matrix is used for one-hot encoding of land cover classes
         self.one_hot_matrix = torch.eye(17)
@@ -77,6 +84,37 @@ class FireSpreadDataset(Dataset):
         self.means = self.means[None, :, None, None]
         self.stds = self.stds[None, :, None, None]
         self.indices_of_degree_features = get_indices_of_degree_features()
+
+
+    def filter_fires(self, cache_path=None):
+        if cache_path and os.path.exists(cache_path):
+            print(f"✅ Loaded cached filtered indices from {cache_path}")
+            with open(cache_path, 'rb') as f:
+                return pickle.load(f)
+
+        indices_with_fire = []
+        for index in tqdm(range(self.get_dataset_length()), desc="Filtering fire samples"):
+            found_fire_year, found_fire_name, in_fire_index = self.find_image_index_from_dataset_index(index)
+            x, y = self.load_imgs(found_fire_year, found_fire_name, in_fire_index)
+
+            x = torch.as_tensor(x)
+            y = torch.as_tensor(y)
+            y = (y > 0).long()
+
+            if y.sum() > 0:
+                indices_with_fire.append(index)
+
+        if cache_path:
+            with open(cache_path, 'wb') as f:
+                pickle.dump(indices_with_fire, f)
+            print(f"💾 Saved filtered indices to {cache_path}")
+
+        return indices_with_fire
+
+
+
+        
+        
 
     def find_image_index_from_dataset_index(self, target_id) -> (int, str, int):
         """_summary_ Given the index of a data point in the dataset, find the corresponding fire that contains it, 
@@ -295,6 +333,7 @@ class FireSpreadDataset(Dataset):
         x = (x - self.means) / self.stds
 
         return x
+    
 
     def preprocess_and_augment(self, x, y):
         """_summary_ Preprocesses and augments the input data. 
@@ -337,6 +376,7 @@ class FireSpreadDataset(Dataset):
         else:
             x, y = self.center_crop_x32(x, y)
 
+
         # Some features take values in [0,360] degrees. By applying sin, we make sure that values near 0 and 360 are
         # close in feature space, since they are also close in reality.
         x[:, self.indices_of_degree_features, ...] = torch.sin(
@@ -365,16 +405,6 @@ class FireSpreadDataset(Dataset):
 
         return x, y
 
-    def pad_if_needed(self, x, crop_size):
-        h, w = x.shape[-2], x.shape[-1]
-        pad_h = max(0, crop_size - h)
-        pad_w = max(0, crop_size - w)
-
-        # Pad format: (left, right, top, bottom)
-        padding = (0, pad_w, 0, pad_h)  # pad right and bottom only
-        if pad_h > 0 or pad_w > 0:
-            x = F.pad(x, padding, mode='constant', value=0)
-        return x
 
     def augment(self, x, y):
         """_summary_ Applies geometric transformations: 
@@ -396,16 +426,20 @@ class FireSpreadDataset(Dataset):
         best_n_fire_pixels = -1
         best_crop = (None, None)
 
-        x = self.pad_if_needed(x, self.crop_side_length)
-        y = self.pad_if_needed(y, self.crop_side_length)
 
         for i in range(10):
-            top = np.random.randint(0, x.shape[-2] - self.crop_side_length)
-            left = np.random.randint(0, x.shape[-1] - self.crop_side_length)
-            x_crop = x[..., top:top+self.crop_side_length, left:left+self.crop_side_length]
-            y_crop = y[..., top:top+self.crop_side_length, left:left+self.crop_side_length]
-
-            
+            if x.shape[-2] > self.crop_side_length:
+                top = np.random.randint(0, x.shape[-2] - self.crop_side_length)
+            else:
+                top = 0
+            if x.shape[-1] > self.crop_side_length:
+                left = np.random.randint(0, x.shape[-1] - self.crop_side_length)
+            else:
+                left = 0
+            x_crop = TF.crop(
+                x, top, left, self.crop_side_length, self.crop_side_length)
+            y_crop = TF.crop(
+                y, top, left, self.crop_side_length, self.crop_side_length)
 
             # We really care about having fire pixels in the target. But if we don't find any there,
             # we care about fire pixels in the input, to learn to predict that no new observations will be made,
@@ -446,6 +480,13 @@ class FireSpreadDataset(Dataset):
             x[:, self.indices_of_degree_features, ...] = (x[:, self.indices_of_degree_features,
                                                           ...] - 90 * rotate) % 360
 
+        if self.prithvi:
+            x = F.interpolate(x, size=(224, 224), mode='bilinear', align_corners=False)
+            y = y.unsqueeze(0).unsqueeze(0)
+            y = y.float()
+            y = F.interpolate(y, size=(224, 224), mode='bilinear', align_corners=False)
+            y = y.squeeze(0).squeeze(0)
+            y = (y > 0.5).long()
         return x, y
 
     def center_crop_x32(self, x, y):
