@@ -3,6 +3,7 @@ from pytorch_lightning.utilities import rank_zero_only
 import torch
 from dataloader.FireSpreadDataModule import FireSpreadDataModule
 from pytorch_lightning.cli import LightningCLI
+from pytorch_lightning.callbacks import ModelCheckpoint  # Import ModelCheckpoint
 from models import SMPModel, BaseModel, ConvLSTMLightning, LogisticRegression  # noqa
 from models import BaseModel
 import wandb
@@ -126,6 +127,7 @@ def main():
         predictions_file_name = os.path.join(
             cli.config.trainer.default_root_dir, f"predictions_{wandb.run.id}.pt")
         torch.save(fire_masks_combined, predictions_file_name)
+        print(f"Predictions saved to {predictions_file_name}")
 
 
 if __name__ == "__main__":

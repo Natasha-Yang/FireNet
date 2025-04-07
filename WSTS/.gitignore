@@ -1,0 +1,6 @@
+wandb/
+lightening_logs/
+__pycache__/
+*.pyc
+*.pt
+*.ckpt
