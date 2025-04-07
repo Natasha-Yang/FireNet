@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from prithvi_dataloader import FireNetDataset
 from prithvi_mae import PrithviViT, PrithviMAE
 from sklearn.metrics import mean_squared_error
-from inference_wsts1 import visualize_mae_outputs
+from inference import visualize_mae_outputs
 
 
 
