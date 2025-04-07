@@ -31,8 +31,6 @@ python3 train.py
 ---
 
 ## Project Organization
-The most up-to-date code compatible with the **WildfireSpreadTS** dataset is currently located in **WSTS**. Since we recently transitioned datasets, we are in the process of migrating documents from **WSTS** to our main module, **FireNet**.  
-
 ```
 ├── LICENSE            
 ├── Makefile           
@@ -75,8 +73,6 @@ The most up-to-date code compatible with the **WildfireSpreadTS** dataset is cur
 │                         
 │
 ├── setup.cfg          
-│
-└── NDWS            <- Outdated source code for the old dataset, to be integrated with WSTS
 ```
 
 ## References 
