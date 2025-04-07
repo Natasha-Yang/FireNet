@@ -5,6 +5,9 @@ from inference import load_example
 from einops import rearrange
 import numpy as np
 from prithvi_mae import PrithviMAE
+from prithvi_dataloader import FireNetDataset
+from inference_wsts import LinearMappingLayer
+import matplotlib.pyplot as plt
 
 
 def get_features(model, input_data, device, num_frames = 3):
@@ -24,21 +27,29 @@ def get_features(model, input_data, device, num_frames = 3):
     
     return reshaped_features 
 
-def main():
-    batch_size = 1
-    bands = config['bands']
-    num_frames = len(data_files)
-    mean = config['mean']
-    std = config['std']
-    img_size = config['img_size']
 
-    print(
-        f"\nTreating {len(data_files)} files as {len(data_files)} time steps from the same location\n"
-    )
-    if len(data_files) != 3:
-        print(
-            "The original model was trained for 3 time steps (expecting 3 files). \nResults with different numbers of timesteps may vary"
-        )
+
+
+def visualize_embedding_channels(embeddings, time_idx=0, num_channels=6):
+    """
+    embeddings: (1, 768, T, H, W)
+    Visualizes first `num_channels` channels at a given time step
+    """
+    emb = embeddings.squeeze(0)  # → (768, T, H, W)
+    emb_t = emb[:, time_idx]     # → (768, H, W)
+
+    fig, axes = plt.subplots(1, num_channels, figsize=(3 * num_channels, 3))
+    for i in range(num_channels):
+        axes[i].imshow(emb_t[i].cpu(), cmap='viridis')
+        axes[i].set_title(f'Channel {i}')
+        axes[i].axis('off')
+    plt.tight_layout()
+    plt.savefig(f"embeddings.png")
+    plt.show()
+
+
+def main():
+    checkpoint = "prithvi/Prithvi_EO_V1_100M.pt"
 
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -47,20 +58,33 @@ def main():
 
     print(f"Using {device} device.\n")
 
+
     # Loading data ---------------------------------------------------------------------------------
 
-    input_data, meta_data = load_example(
-        file_paths=data_files, indices=input_indices, mean=mean, std=std
-    )
+    with open("prithvi/prithvi.yaml", "r") as f:
+        data_config = yaml.safe_load(f)
+    dataset = FireNetDataset(**data_config)
+
+    print(f"Dataset loaded from: {data_config['data_dir']}")
+    dataset.setup()
+    #train_loader = dataset.train_dataloader()
+    #val_loader = dataset.val_dataloader()
+    test_loader = dataset.test_dataloader()
 
     # Create model and load checkpoint -------------------------------------------------------------
+    model_config_path = "prithvi/config.json"
+    with open(model_config_path, "r") as f:
+        model_config = yaml.safe_load(f)['pretrained_cfg']
 
-    config.update(
+    bands = model_config['bands']
+    num_frames = 3
+
+    model_config.update(
         num_frames=num_frames,
         in_chans=len(bands),
     )
 
-    model = PrithviMAE(**config)
+    model = PrithviMAE(**model_config)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"\n--> Model has {total_params:,} parameters.\n")
@@ -75,47 +99,18 @@ def main():
     model.load_state_dict(state_dict, strict=False)
     print(f"Loaded checkpoint from {checkpoint}")
 
-    # Running model --------------------------------------------------------------------------------
-
-    model.eval()
-
-    # Reflect pad if not divisible by img_size
-    original_h, original_w = input_data.shape[-2:]
-    print(original_h, original_w)
-    pad_h = img_size - (original_h % img_size)
-    pad_w = img_size - (original_w % img_size)
-    input_data = np.pad(
-        input_data, ((0, 0), (0, 0), (0, 0), (0, pad_h), (0, pad_w)), mode="reflect"
-    )
-
-    # Build sliding window
-    batch = torch.tensor(input_data, device="cpu")
-    windows = batch.unfold(3, img_size, img_size).unfold(4, img_size, img_size)
-    h1, w1 = windows.shape[3:5]
-    windows = rearrange(
-        windows, "b c t h1 w1 h w -> (b h1 w1) c t h w", h=img_size, w=img_size
-    )
-
-    # Split into batches if number of windows > batch_size
-    num_batches = windows.shape[0] // batch_size if windows.shape[0] > batch_size else 1
-    windows = torch.tensor_split(windows, num_batches, dim=0)
+    linear_mapping = LinearMappingLayer(input_channels=40, output_channels=6).to(device)
 
     # Get features
     features = []
-    for x in windows:
-        # (B, embedding dimension, T, H, W)
-        feature = get_features(model, x, device) 
-        features.append(feature)
-    features = torch.concat(features, dim=0)
+    with torch.no_grad():
+        for x, y in test_loader:
+            x = x.to(device)  # x shape: (1, C, T, H, W)
+            x_mapped = linear_mapping(x)
+            feature = get_features(model, x_mapped, device) # (B, embedding dimension, T, H, W)
+            visualize_embedding_channels(feature, num_channels = 20)
+            break
+    
 
 if __name__ == "__main__":
-    config_path = "config.json"
-    checkpoint = "Prithvi_EO_V1_100M.pt"
-    data_files = ["examples/HLS.L30.T13REN.2018013T172747.v2.0.B02.B03.B04.B05.B06.B07_cropped.tif",
-                  "examples/HLS.L30.T13REN.2018029T172738.v2.0.B02.B03.B04.B05.B06.B07_cropped.tif",
-                  "examples/HLS.L30.T13REN.2018061T172724.v2.0.B02.B03.B04.B05.B06.B07_cropped.tif"
-                 ]
-    input_indices = None
-    with open(config_path, "r") as f:
-        config = yaml.safe_load(f)['pretrained_cfg']
     main()
