@@ -19,56 +19,47 @@ This repository uses the **WildfireSpreadTS** dataset, which is freely available
 
 To speed up training, convert the dataset to HDF5 format by running:  
 ```bash
-python3 src/preprocess/CreateHDF5Dataset.py --data_dir YOUR_DATA_DIR --target_dir YOUR_TARGET_DIR
+python3 baselines/src/preprocess/CreateHDF5Dataset.py --data_dir YOUR_DATA_DIR --target_dir YOUR_TARGET_DIR
 ```  
 
 ## Running Experiments  
 Run training with the following command:  
-```bash
-python3 train.py --config=cfgs/convlstm_cbam/full_run.yaml \
-                 --trainer=cfgs/trainer_single_gpu.yaml \
-                 --data=cfgs/data_monotemporal_full_features.yaml \
-                 --seed_everything=0 \
-                 --trainer.max_epochs=200 \
-                 --do_test=True \
-                 --data.data_dir YOUR_DATA_DIR \
-                 --model_name YOUR_MODEL_NAME
+```
+python3 train.py
 ```  
 
 ---
 
 ## Project Organization
-The most up-to-date code compatible with the **WildfireSpreadTS** dataset is currently located in **WSTS**. Since we recently transitioned datasets, we are in the process of migrating documents from **WSTS** to our main module, **FireNet**.  
-
 ```
 ├── LICENSE            
 ├── Makefile           
 ├── README.md          
-├── WSTS               <- Latest working code compatible with the WildfireSpreadTS dataset
-│   ├── cfgs           <- YAML configuration files for trainer, data loader, and model settings
-│   ├── src            <- Main working directory containing models and preprocessing code
+├── baselines          <- Baseline models (persistence, logistic regression, convLSTM, convLSTM + CBAM, UTAE)
+│   ├── cfgs           <- YAML configuration files for trainer, data loader, and baseline model settings
+│   ├── src            <- Main working directory containing baseline models and preprocessing code
     │   ├── __init__.py         
     │   └── train.py
     │   ├── dataloader         
     │   ├── models 
-├── data
-│   ├── external       
-│   ├── interim        
+├── data       
 │   ├── processed      
 │   └── raw                        
 │
-├── prithvi100m
-|   ├── prithvi                <- Latest working code modifications to Prithvi 100M ViT
-    │   ├── examples           <- default flood segmentation input files (to be changed)
-    │   ├── output            <- Main working directory containing models and preprocessing code
-        ├── __init__.py         
-        ├── inference.py
-        ├── features.py
-        ├── inference_wsts.py
-        ├── prithvi_dataloader.py
-        ├── prithvi_mae.py
-    ├── exploration.ipynb
-    ├── prithvi_visualization.py
+├── prithvi                      <- Latest working code modifications to Prithvi 100M ViT
+    ├── __init__.py
+    ├── config.json
+    ├── firenet_prithvi.py       <- Linear mapping + Prithvi encoder + SegFormer decoder
+    ├── pretrain.py              <- Code for pretraining Prithvi on our dataset
+    ├── prithvi_dataloader.py
+    ├── prithvi_mae.py
+    ├── exploration
+├── cnn2plus1d               <- (2+1)D CNN with Atrous Spatial Pyramid Pooling (ASPP)
+    ├── __init__.py
+    ├── cnn2plus1d.yaml
+    ├── firenet3dcnn.py
+    ├── CBAM.py
+
 ├── notebooks          
 │
 ├── pyproject.toml      
@@ -82,8 +73,6 @@ The most up-to-date code compatible with the **WildfireSpreadTS** dataset is cur
 │                         
 │
 ├── setup.cfg          
-│
-└── NDWS            <- Outdated source code for the old dataset, to be integrated with WSTS
 ```
 
 ## References 
