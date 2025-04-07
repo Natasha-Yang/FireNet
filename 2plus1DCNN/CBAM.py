@@ -5,8 +5,9 @@ import torch.nn.functional as F
 class SAM3D(nn.Module):
     def __init__(self, bias=False):
         super(SAM3D, self).__init__()
-        self.conv = nn.Conv3d(in_channels=2, out_channels=1, kernel_size=7,
-                              padding=3, bias=bias)
+        self.conv = nn.Conv3d(
+            in_channels=2, out_channels=1, kernel_size=7,
+            padding=3, bias=bias)
 
     def forward(self, x):
         max_out, _ = torch.max(x, dim=1, keepdim=True)  # (B, 1, T, H, W)
