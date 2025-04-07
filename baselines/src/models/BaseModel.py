@@ -72,6 +72,7 @@ class BaseModel(pl.LightningModule, ABC):
         # If doys are used, the model needs to re-implement the forward method
         if self.hparams.flatten_temporal_dimension and len(x.shape) == 5:
             x = x.flatten(start_dim=1, end_dim=2)
+        # print(f"Input shape: {x.shape}")
         return self.model(x)
 
     def get_pred_and_gt(self, batch):

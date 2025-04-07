@@ -4,3 +4,4 @@ from .LogisticRegression import LogisticRegression
 from .SMPModel import SMPModel
 from .UTAELightning import UTAELightning
 from .ConvLSTM_CBAM_Lightning import ConvLSTM_CBAM_Lightning
+from .UTAE_CBAM_Lightning import UTAE_CBAM_Lightning

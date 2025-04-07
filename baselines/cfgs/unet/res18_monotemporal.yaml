@@ -15,5 +15,5 @@ model:
     loss_function: Dice
 
 do_train: true
-do_predict: false
+do_predict: true
 do_test: true
