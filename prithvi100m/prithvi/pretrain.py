@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from firenet import *
+from firenet_prithvi import *
 from prithvi_dataloader import FireNetDataset
 import torchmetrics
 import torch.nn.functional as F

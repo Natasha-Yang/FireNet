@@ -1,14 +1,52 @@
 import torch
 import torch.nn as nn
 import yaml
-from inference import load_example
 from einops import rearrange
 import numpy as np
 from prithvi_mae import PrithviMAE
 from prithvi_dataloader import FireNetDataset
 from inference_wsts import LinearMappingLayer
 import matplotlib.pyplot as plt
+from typing import List, Union
 
+def load_example(
+    file_paths: List[str],
+    mean: List[float],
+    std: List[float],
+    indices: Union[list[int], None] = None,
+):
+    """Build an input example by loading images in *file_paths*.
+
+    Args:
+        file_paths: list of file paths .
+        mean: list containing mean values for each band in the images in *file_paths*.
+        std: list containing std values for each band in the images in *file_paths*.
+
+    Returns:
+        np.array containing created example
+        list of meta info for each image in *file_paths*
+    """
+
+    imgs = []
+    metas = []
+
+    for file in file_paths:
+        img, meta, _ = read_geotiff(file)
+
+        # Rescaling (don't normalize on nodata)
+        img = np.moveaxis(img, 0, -1)  # channels last for rescaling
+        if indices is not None:
+            img = img[..., indices]
+        img = np.where(img == NO_DATA, NO_DATA_FLOAT, (img - mean) / std)
+
+        imgs.append(img)
+        metas.append(meta)
+
+    imgs = np.stack(imgs, axis=0)  # num_frames, H, W, C
+    imgs = np.moveaxis(imgs, -1, 0).astype("float32")  # C, num_frames, H, W
+    imgs = np.expand_dims(imgs, axis=0)  # add batch di
+
+    return imgs, metas
 
 def get_features(model, input_data, device, num_frames = 3):
     '''Get embeddings'''
