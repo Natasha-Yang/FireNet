@@ -25,23 +25,24 @@ class LinearMappingLayer(nn.Module):
 # Feature extraction and XGBoost training
 class XGBoostDecoder:
     def __init__(self):
+        """Initialize the XGBoost decoder."""
         self.model = xgb.XGBRegressor()
 
     def fit(self, features, targets):
+        """Fit the XGBoost model to the features and targets."""
         features = features.reshape(features.shape[0], -1)
-        #print("a")
-        #self.model.fit(features, targets)
-        #features = features[:100]
-        #targets = targets[:100]
         self.model.fit(features, targets)
-        #print("b")
+       
 
     def predict(self, features):
+        """Predict using the XGBoost model."""
+        # Ensure features are reshaped correctly for prediction
         features = features.reshape(features.shape[0], -1)
         return self.model.predict(features)
 
 
 def run_model_with_xgboost(model, xgboost_decoder, input_data, mask_ratio, device):
+    """Run the model with XGBoost decoder."""
     with torch.no_grad():
         x = input_data.to(device)
         latent_features = model.forward_features(x)
@@ -69,7 +70,6 @@ def main():
     test_loader = dataset.test_dataloader()
     
     # Initialize PrithviMAE and XGBoost decoder
-    #model = PrithviViT(**model_config).to(device)
     model = PrithviMAE(**model_config)
 
     total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -86,8 +86,8 @@ def main():
 
     xgboost_decoder = XGBoostDecoder()
 
-    input_dim = 40 #len(bands) * img_size * img_size * num_frames  # Calculate input dimension
-    output_dim = 6#input_dim  # Define output dimension as needed (for now, keeping the same size)
+    input_dim = 40 
+    output_dim = 6
     linear_mapping = LinearMappingLayer(input_dim, output_dim).to(device)
 
     # Running model --------------------------------------------------------------------------------
@@ -99,8 +99,7 @@ def main():
         x = x.to(device)
 
         x = linear_mapping(x)
-        latent_features = model.forward_features(x)  # Corrected
-        #print("made it here")
+        latent_features = model.forward_features(x) 
 
     # Use the final layer's output
     
@@ -113,10 +112,10 @@ def main():
 
     # Run model with XGBoost decoder
     for x, y in test_loader:
-        #print("stuck?")
+     
         x = x.to(device)
         x = linear_mapping(x)
-        #y = y[:100]
+
 
         predictions = run_model_with_xgboost(model, xgboost_decoder, x, mask_ratio=0.5, device=device)
         print(f"Predictions shape: {predictions.shape}")
