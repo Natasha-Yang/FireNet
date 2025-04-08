@@ -2,7 +2,7 @@ import os
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..','..')))
 
-from WSTS.src.dataloader.FireSpreadDataset import FireSpreadDataset
+from baselines.src.dataloader.FireSpreadDataset import FireSpreadDataset
 from torch.utils.data import DataLoader
 from typing import List, Optional, Union
 import yaml
@@ -13,12 +13,18 @@ class FireNetDataset():
                  load_from_hdf5: bool, num_workers: int, remove_duplicate_features: bool,
                  features_to_keep: Union[Optional[List[int]], str] = None, return_doy: bool = False,
                  data_fold_id: int = 0):
+        """ _Initialize the FireNetDataset class.
+        This class is responsible for loading and preparing the dataset for training, validation, and testing.
+        Args:
+            data_dir (str): Directory containing the dataset.
+            batch_size (int): Batch size for training and validation."""
         super().__init__()
 
         self.n_leading_observations_test_adjustment = n_leading_observations_test_adjustment
         self.data_fold_id = data_fold_id
         self.return_doy = return_doy
-        # wandb apparently can't pass None values via the command line without turning them into a string, so we need this workaround
+
+        # wandb can't pass None values via the command line without turning them into a string, need this workaround
         self.features_to_keep = features_to_keep if type(
             features_to_keep) != str else None
         self.remove_duplicate_features = remove_duplicate_features
@@ -31,6 +37,8 @@ class FireNetDataset():
         self.train_dataset, self.val_dataset, self.test_dataset = None, None, None
     
     def setup(self):
+        """Setup the dataset by splitting it into training, validation, and test sets."""
+        # Split the dataset into train, val, and test sets based on the provided fold ID
         train_years, val_years, test_years = self.split_fires(
             self.data_fold_id)
         self.train_dataset = FireSpreadDataset(data_dir=self.data_dir, included_fire_years=train_years,
@@ -59,20 +67,24 @@ class FireNetDataset():
                                               stats_years=train_years)
 
     def train_dataloader(self):
+        """Return the training dataloader."""
         return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers, pin_memory=True)
 
     def val_dataloader(self):
+        """Return the validation dataloader."""
         return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, pin_memory=True)
 
     def test_dataloader(self):
+        """Return the test dataloader."""
         return DataLoader(self.test_dataset, batch_size=1, shuffle=False, num_workers=self.num_workers, pin_memory=True)
 
     def predict_dataloader(self):
+        """Return the prediction dataloader."""
         return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers, pin_memory=True)
 
     @staticmethod
     def split_fires(data_fold_id):
-        """_summary_ Split the years into train/val/test set.
+        """Split the years into train/val/test set.
 
         Args:
             data_fold_id (_type_): _description_ Index of the respective split to choose, see method body for details.
