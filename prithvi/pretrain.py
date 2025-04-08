@@ -14,10 +14,26 @@ import wandb
 
 class LinearMappingLayer(nn.Module):
     def __init__(self, input_channels, output_channels):
+        """
+        Linear mapping layer to project input channels to a different number of output channels.
+        This is used to map the input channels of the FireNet dataset to the expected input channels of the Prithvi model.
+        Args:
+            input_channels (int): Number of input channels (FireNet).
+            output_channels (int): Number of output channels (Prithvi).
+        """
+         # Initialize the parent class
+         # Define a 3D convolutional layer with kernel size 1 to perform linear mapping
         super(LinearMappingLayer, self).__init__()
         self.linear = nn.Conv3d(input_channels, output_channels, kernel_size=1)
 
     def forward(self, x):
+        """
+        Forward pass of the linear mapping layer.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, C, T, H, W).
+        Returns:
+            torch.Tensor: Output tensor of shape (B, output_channels, T, H, W).
+        """
         # x: (B, 40, T, H, W)
         x_env = x[:, :-1, :, :, :]  # (B, 39, T, H, W)
         x_fire = x[:, -1:, :, :, :]  # (B, 1, T, H, W) — use : instead of indexing to preserve 5D
@@ -28,11 +44,28 @@ class LinearMappingLayer(nn.Module):
 
 class PretrainPrithvi(nn.Module):
     def __init__(self, model, projector):
+        """
+        Pretraining wrapper for the Prithvi model.
+        This class wraps the Prithvi model and a linear mapping layer to project the input channels.
+        Args:
+            model (torch.nn.Module): The Prithvi model.
+            projector (LinearMappingLayer): The linear mapping layer to project input channels.
+        """
+         # Initialize the parent class
+         # Store the model and projector
         super().__init__()
         self.model = model
         self.projector = projector
 
     def forward(self, x, **kwargs):
+        """
+        Forward pass of the pretraining model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, C, T, H, W).
+            **kwargs: Additional arguments for the model.
+        Returns:
+                torch.Tensor: Output tensor from the model.
+        """
         x = self.projector(x)
         return self.model(x, **kwargs)
 
@@ -51,6 +84,22 @@ def pretrain_prithvi(
     run_name="prithvi-run",
     early_stop_patience=5
 ):
+    """
+    Pretrain the Prithvi model using a linear mapping layer to project input channels.
+    Args:
+        prithvi_model (torch.nn.Module): The Prithvi model to be pretrained.
+        dataloader (torch.utils.data.DataLoader): DataLoader for the training dataset.
+        device (torch.device): Device to run the training on (CPU or GPU).
+        epochs (int): Number of epochs to train.
+        mask_ratio (float): Ratio of input data to mask during training.
+        input_channels (int): Number of input channels in the dataset.
+        mapped_channels (int): Number of output channels after mapping.
+        lr (float): Learning rate for the optimizer.
+        save_path (str): Path to save the pretrained model.
+        wandb_project (str): WandB project name for logging.
+        run_name (str): WandB run name for logging.
+        early_stop_patience (int): Number of epochs with no improvement before stopping training.
+    """
     # Initialize wandb
     wandb.init(project=wandb_project, name=run_name, config={
         "epochs": epochs,
@@ -70,6 +119,7 @@ def pretrain_prithvi(
     best_loss = float("inf")
     patience_counter = 0
 
+    # Training loop
     for epoch in range(epochs):
         epoch_loss = 0.0
         pbar = tqdm(dataloader, desc=f"Epoch {epoch + 1}/{epochs}")
