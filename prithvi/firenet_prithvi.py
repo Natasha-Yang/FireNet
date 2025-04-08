@@ -14,7 +14,16 @@ import wandb
 
 
 class LinearMappingLayer(nn.Module):
+    """
+    Linear mapping layer to project input channels to a different number of output channels.
+    This is used to map the input channels of the FireNet dataset to the expected input channels of the Prithvi model.
+    """
     def __init__(self, input_channels, output_channels):
+        """
+        Args:
+            input_channels (int): Number of input channels (FireNet).
+            output_channels (int): Number of output channels (Prithvi).
+        """
         super().__init__()
         # Use Conv3d to map 39 input channels to 6 output channels
         self.linear = nn.Sequential(
@@ -22,12 +31,27 @@ class LinearMappingLayer(nn.Module):
             nn.BatchNorm3d(5) # normalize across batch and spatial dims
         )
     def forward(self, x):
+        """
+        Forward pass of the linear mapping layer.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, C, T, H, W).
+        Returns:
+            torch.Tensor: Output tensor of shape (B, output_channels, T, H, W).\
+        """
         # x shape: (B, C, T, H, W)
         return self.linear(x)
 
 
 class PrithviEncoder(nn.Module):
     def __init__(self, model, device, num_frames=3):
+        """
+        Encoder for the Prithvi model.
+        This class wraps the Prithvi model and extracts features from the last three hidden states.
+        Args:
+            model (torch.nn.Module): The Prithvi model.
+            device (torch.device): The device to run the model on.
+            num_frames (int): Number of frames to process at once.
+        """
         super().__init__()
         self.model = model
         self.device = device
@@ -64,6 +88,12 @@ class PrithviEncoder(nn.Module):
 
 class CNNDecoder(nn.Module):
     def __init__(self, embedding_dim):
+        """
+        CNN Decoder for the segmentation task.
+        This class takes the output of the encoder and decodes it to a segmentation map.
+        Args:
+            embedding_dim (int): Dimension of the input features.
+        """
         super().__init__()
 
         self.decoder = nn.Sequential(
@@ -107,10 +137,23 @@ class CNNDecoder(nn.Module):
 
 class SegformerMLP(nn.Module):
     def __init__(self, input_dim, output_dim):
+        """
+        MLP for Segformer decoder head.
+        This class takes the input features and projects them to a different dimension.
+        Args:
+            input_dim (int): Dimension of the input features.
+            output_dim (int): Dimension of the output features.
+        """
         super().__init__()
         self.proj = nn.Linear(input_dim, output_dim)
 
     def forward(self, hidden_states: torch.Tensor):
+        """
+        Args:
+            hidden_states: Tensor of shape (B, num_patches, input_dim).
+        Returns:
+            hidden_states: Tensor of shape (B, num_patches, output_dim).
+        """
         hidden_states = hidden_states.flatten(2).transpose(1, 2)  # (B, H*W, C)
         hidden_states = self.proj(hidden_states)                  # (B, H*W, decoder_dim)
         return hidden_states
@@ -184,12 +227,26 @@ class SegformerDecoderHead(nn.Module):
 
 class FireNet(nn.Module):
     def __init__(self, linear_map, encoder, decoder):
+        """
+        FireNet model that combines a linear mapping layer, encoder, and decoder.
+        Args:
+            linear_map (LinearMappingLayer): Linear mapping layer to project input channels.
+            encoder (PrithviEncoder): Encoder for the Prithvi model.
+            decoder (SegformerDecoderHead): Decoder head for segmentation.
+        """
         super().__init__()
         self.linear_map = linear_map
         self.encoder = encoder
         self.decoder = decoder
 
     def forward(self, x):
+        """
+        Forward pass of the FireNet model.
+        Args:
+            x (torch.Tensor): Input tensor of shape (B, 40, T, H, W).
+        Returns:
+            torch.Tensor: Output tensor of shape (B, 1, H_out, W_out).
+        """
         x_env = x[:, :39, ...]  
         x_fire = x[:, 39:, ...]
         x_env_mapped = self.linear_map(x_env) # (B, 6, T, H, W)
@@ -274,11 +331,11 @@ def train_firenet(model, train_loader, val_loader, device, num_epochs=10,
             torch.save(model.state_dict(), best_model_path)
             wandb.run.summary["best_val_loss"] = best_val_loss
             wandb.run.summary["best_epoch"] = epoch + 1
-            print(f"✅ Model improved. Saved to {best_model_path}")
+            print(f"Model improved. Saved to {best_model_path}")
         else:
             epochs_since_improvement += 1
             early_stop_counter += 1
-            print(f"⚠️ No improvement for {epochs_since_improvement} epoch(s)")
+            print(f"No improvement for {epochs_since_improvement} epoch(s)")
 
         # Unfreeze encoder and reduce LR on plateau
         if encoder_frozen and epochs_since_improvement >= patience:
