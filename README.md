@@ -41,7 +41,8 @@ python3 train.py
     │   ├── __init__.py         
     │   └── train.py
     │   ├── dataloader         
-    │   ├── models 
+    │   ├── models
+    │   ├── preprocess 
 ├── data       
 │   ├── processed      
 │   └── raw                        
@@ -59,15 +60,10 @@ python3 train.py
     ├── cnn2plus1d.yaml
     ├── firenet3dcnn.py
     ├── CBAM.py
-
-├── notebooks          
-│
+|
 ├── pyproject.toml      
 │                         
-│       
-│
-├── reports            
-│   └── figures        
+│           
 │
 ├── requirements.txt  
 │                         
