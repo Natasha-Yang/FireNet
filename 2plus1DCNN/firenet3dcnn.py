@@ -4,7 +4,14 @@ import torch.nn.functional as F
 from CBAM import CBAM3D
 
 class ASPP3D(nn.Module):
+    """
+    Atrous Spatial Pyramid Pooling (ASPP) module for 3D data.
+    This module applies multiple parallel convolutional branches with different dilation rates
+    to capture multi-scale features.
+    """
     def __init__(self, in_channels, out_channels, dilations=(1, 4, 8, 12)):
+        """
+        Args: """
         super().__init__()
         self.branches = nn.ModuleList([
             nn.Sequential(
@@ -25,12 +32,14 @@ class ASPP3D(nn.Module):
         )
 
     def forward(self, x):
+        """Forward pass of the ASPP module."""
         out = torch.cat([branch(x) for branch in self.branches], dim=1)
         return self.project(out)
 
 
 class Conv2Plus1D(nn.Module):
     def __init__(self, in_planes, out_planes, mid_planes=None, spatial_dilation=1, temporal_dilation=1):
+        """2D Convolution followed by 1D Convolution. """
         super().__init__()
         if mid_planes is None:
             mid_planes = (in_planes * out_planes) // (in_planes + out_planes)
@@ -56,12 +65,22 @@ class Conv2Plus1D(nn.Module):
         self.relu2 = nn.ReLU(inplace=True)
 
     def forward(self, x):
+        """Forward pass of the Conv2Plus1D module.
+        Args: 
+            x (torch.Tensor): Input tensor of shape (B, C, T, H, W).
+        Returns: 
+            torch.Tensor: Output tensor of shape (B, out_planes, T, H, W)."""
         x = self.relu1(self.bn1(self.spatial(x)))
         x = self.relu2(self.bn2(self.temporal(x)))
         return x
 
 class FireNet3DCNN(nn.Module):
     def __init__(self, in_channels, base_filters=32):
+        """ FireNet3D CNN model.
+        Args: 
+            in_channels (int): Number of input channels.
+            base_filters (int): Number of filters in the first layer.
+        """
         super(FireNet3DCNN, self).__init__()
 
         self.encoder = nn.Sequential(
@@ -95,6 +114,14 @@ class FireNet3DCNN(nn.Module):
 
 class FireNet3DCNNSplit(nn.Module):
     def __init__(self, in_channels, env_filters=32, fire_filters=8, spatial_dilation=1, temporal_dilation=1):
+        """ FireNet3D CNN model with split branches for environmental and fire data.
+        Args:
+            in_channels (int): Number of input channels.
+            env_filters (int): Number of filters for environmental data.
+            fire_filters (int): Number of filters for fire data.
+            spatial_dilation (int): Dilation rate for spatial convolution.
+            temporal_dilation (int): Dilation rate for temporal convolution.
+        """
         super().__init__()
 
         self.env_encoder = nn.Sequential(
@@ -149,6 +176,14 @@ class FireNet3DCNNSplit(nn.Module):
 
 class FireNet3DCNNSplitCBAM(nn.Module):
     def __init__(self, in_channels, env_filters=32, fire_filters=8):
+        """ FireNet3D CNN model with split branches for environmental and fire data.
+        Args:
+            in_channels (int): Number of input channels.
+            env_filters (int): Number of filters for environmental data.
+            fire_filters (int): Number of filters for fire data.
+        """
+         # Initialize the parent class
+         # Define the modules
         super().__init__()
 
         self.env_encoder = nn.Sequential(
@@ -207,6 +242,14 @@ class FireNet3DCNNSplitCBAM(nn.Module):
 
 class FireNet3DCNNSplitASPP(nn.Module):
     def __init__(self, in_channels, env_filters=32, fire_filters=8):
+        """ FireNet3D CNN model with split branches for environmental and fire data.
+        Args:
+            in_channels (int): Number of input channels.
+            env_filters (int): Number of filters for environmental data.
+            fire_filters (int): Number of filters for fire data.
+        """
+         # Initialize the parent class
+         # Define the modules
         super().__init__()
 
         self.env_encoder = nn.Sequential(
