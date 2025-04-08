@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from firenet3dcnn import FireNet3DCNN, FireNet3DCNNSplit, FireNet3DCNNSplitCBAM
-from prithvi_dataloader import FireNetDataset
+from .cnn2plus1d.firenet3dcnn import FireNet3DCNN, FireNet3DCNNSplit, FireNet3DCNNSplitCBAM
+from .prithvi.prithvi_dataloader import FireNetDataset
 from segmentation_models_pytorch.losses import JaccardLoss, FocalLoss
 from torchmetrics.classification import JaccardIndex
 from monai.losses import HausdorffDTLoss, TverskyLoss
@@ -27,10 +27,23 @@ focal_loss = FocalLoss(mode='binary', alpha=0.99, gamma=3.0)
 tversky_loss = TverskyLoss(alpha=0.45, beta=0.55, sigmoid=True)
 
 def jaccard_hausdorff(preds, targets):
+    """Combined Jaccard and Hausdorff loss.
+    Args:
+        preds (torch.Tensor): Predicted logits.
+        targets (torch.Tensor): Target labels.
+    Returns:
+        torch.Tensor: Combined loss value."""
     # preds: raw logits → must apply sigmoid for Hausdorff
     return 0.7 * dice_loss(preds, targets) + 0.3 * hausdorff_loss(torch.sigmoid(preds), targets)
 
 def jaccard_focal(preds, targets):
+    """Combined Jaccard and Focal loss.
+    Args:
+        preds (torch.Tensor): Predicted logits.
+        targets (torch.Tensor): Target labels.
+    Returns:
+        torch.Tensor: Combined loss value."""
+    # preds: raw logits → must apply sigmoid for Focal
     return 0.5 * dice_loss(preds, targets) + 0.5 * focal_loss(torch.sigmoid(preds), targets)
 
 
@@ -38,6 +51,12 @@ def train_firenet(model, train_loader, val_loader, criterion, device, model_name
                   lr_frozen=1e-3, lr_unfrozen=1e-4,
                   log_file="train_logs/training_log.txt", model_dir="saved_models",
                   unfreeze_epoch=None, early_stop_patience=5):
+    """Train the FireNet model.
+    Args:
+        model (nn.Module): FireNet model.
+        train_loader (DataLoader): Training data loader.
+        val_loader (DataLoader): Validation data loader.
+        criterion (callable): Loss function."""
 
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     os.makedirs(model_dir, exist_ok=True)
@@ -76,6 +95,7 @@ def train_firenet(model, train_loader, val_loader, criterion, device, model_name
     best_val_f1 = float('-inf')
     early_stop_counter = 0
 
+    #Train loop
     for epoch in range(num_epochs):
         model.train()
         total_loss = 0.0
@@ -131,7 +151,7 @@ def train_firenet(model, train_loader, val_loader, criterion, device, model_name
             torch.save(model.state_dict(), best_model_path)
             wandb.run.summary["best_val_f1"] = best_val_f1
             wandb.run.summary["best_epoch"] = epoch + 1
-            print(f"✅ Model improved. Saved to {best_model_path}")
+            print(f"Model improved. Saved to {best_model_path}")
         else:
             early_stop_counter += 1
             print(f"No improvement for {early_stop_counter} epoch(s)")
@@ -168,6 +188,14 @@ def train_firenet(model, train_loader, val_loader, criterion, device, model_name
 
 
 def validate_firenet(model, val_loader, device, criterion, val_f1, val_iou, log_samples=False, epoch=None):
+    """Validate the FireNet model.
+    Args:
+        model (nn.Module): FireNet model.
+        val_loader (DataLoader): Validation data loader.
+        device (torch.device): Device to run the model on.
+        criterion (callable): Loss function.
+        log_samples (bool): Whether to log sample images."""
+    
     model.eval()
     total_loss = 0.0
     val_f1.reset()
