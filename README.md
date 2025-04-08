@@ -61,6 +61,9 @@ python3 train.py
     ├── firenet3dcnn.py
     ├── CBAM.py
 |
+├── train.py 
+│                         
+│      
 ├── pyproject.toml      
 │                         
 │           
